@@ -1,14 +1,34 @@
-export type FeedbackMarkerId = string;
-
-export interface FeedbackMarker {
-  id: FeedbackMarkerId;
-  xPercent: number;
-  yPercent: number;
-  comment: string;
-  createdAt: string;
+type Tool = "none" | "pin" | "rect" | "freehand";
+type Point = { x: number; y: number };
+interface BaseAnnotation {
+  id: string;
+  tool: Tool;
+  created_at: string;
 }
-
-export interface FeedbackState {
-  markers: FeedbackMarker[];
-  activeMarkerId: FeedbackMarkerId | null;
+interface PinAnnotation extends BaseAnnotation {
+  tool: "pin";
+  position: Point;
 }
+interface RectAnnotation extends BaseAnnotation {
+  tool: "rect";
+  position: Point;
+  size: {
+    width: number;
+    height: number;
+  };
+}
+interface FreehandAnnotation extends BaseAnnotation {
+  tool: "freehand";
+  points: Array<Point>;
+}
+type Annotation = PinAnnotation | RectAnnotation | FreehandAnnotation;
+
+export type {
+  Annotation,
+  BaseAnnotation,
+  FreehandAnnotation,
+  PinAnnotation,
+  Point,
+  RectAnnotation,
+  Tool,
+};

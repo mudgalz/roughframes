@@ -1,3 +1,5 @@
+import type { Annotation } from "@/pages/workspace/file-viewer/types";
+
 interface CloudinaryUploadResponse {
   asset_id: string;
   public_id: string;
@@ -37,11 +39,12 @@ interface FileRow
 interface FeedbackRow {
   id: string;
   file_id: string;
-  x: number;
-  y: number;
+
   comment: string | null;
   added_by: string | null;
   created_at: string;
+
+  annotations: Annotation[];
 }
 
 export type { CloudinaryUploadResponse, FeedbackRow, FileRow };

@@ -6,7 +6,7 @@ import { WorkspaceLayout } from "./layouts/WorkspaceLayout";
 import Home from "./pages/home";
 
 import Identify from "./pages/identify";
-import FileViewer from "./pages/workspace/file-viewer";
+import FileViewer from "./pages/workspace/file-viewer/file-viewer";
 import Workspace from "./pages/workspace/workspace";
 
 export default function App() {

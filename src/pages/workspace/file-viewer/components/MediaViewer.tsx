@@ -7,7 +7,11 @@ export const MediaPreview = (props: { file: FileRow }) => {
   return (
     <div className="w-full h-full flex items-center justify-center p-2">
       {fileType === "image" ? (
-        <ImageKanvas imageUrl={file.file_url} />
+        <ImageKanvas
+          width={file.width}
+          height={file.height}
+          imageUrl={file.file_url}
+        />
       ) : (
         <video
           src={file.file_url}

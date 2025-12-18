@@ -56,3 +56,15 @@ export function validateFiles(files: File[]): ValidateResult {
 
   return { valid, errors };
 }
+
+export const formatDate = (date: string | Date): string => {
+  const d = typeof date === "string" ? new Date(date) : date;
+
+  return d.toLocaleString("en-US", {
+    month: "short",
+    day: "numeric",
+    hour: "numeric",
+    minute: "2-digit",
+    hour12: true,
+  });
+};

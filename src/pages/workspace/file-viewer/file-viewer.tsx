@@ -1,7 +1,7 @@
 import { Spinner } from "@/components/ui/spinner";
 import { useSingleFile } from "@/hooks/use-files";
 import { useParams } from "react-router-dom";
-import { FeedbackPanel } from "./components/FeedbackPanel";
+import { FeedbackPanel } from "./components/feedback/feedback-panel";
 import FileHeader from "./components/FileHeader";
 import { MediaPreview } from "./components/MediaViewer";
 import { useFeedbackPanel } from "./hooks/use-feedback-panel";

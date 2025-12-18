@@ -8,11 +8,13 @@ import {
   ZoomIn,
   ZoomOut,
 } from "lucide-react";
-import { useKanvasStore, type Tool } from "../hooks/use-kanvas-controller";
+import { useAnnotationStore } from "../hooks/use-annotation";
+import { useKanvasStore } from "../hooks/use-kanvas-controller";
+import type { Tool } from "../types";
 
 export const AnnotationToolbar = () => {
-  const activeTool = useKanvasStore((s) => s.activeTool);
-  const setTool = useKanvasStore((s) => s.setTool);
+  const activeTool = useAnnotationStore((s) => s.activeTool);
+  const setTool = useAnnotationStore((s) => s.setTool);
 
   const zoomIn = useKanvasStore((s) => s.zoomIn);
   const zoomOut = useKanvasStore((s) => s.zoomOut);

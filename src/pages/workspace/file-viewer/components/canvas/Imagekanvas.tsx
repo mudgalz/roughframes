@@ -1,94 +1,85 @@
 // image/ImageKanvas.tsx
+import { useShallow } from "zustand/shallow";
 
-import React, { useCallback, useEffect, useRef, useState } from "react";
+import useResizeObserver from "@/hooks/use-resize-observer";
+import type Konva from "konva";
+import React, { useCallback, useMemo, useRef } from "react";
 import { Circle, Image as KonvaImage, Layer, Stage } from "react-konva";
 import useImage from "use-image";
+import { useAnnotationStore } from "../../hooks/use-annotation";
+import { useFeedbackDraftStore } from "../../hooks/use-feedback-draft";
 import { useKanvasStore } from "../../hooks/use-kanvas-controller";
+import type { Point } from "../../types";
 
 export interface ImageKanvasProps {
   imageUrl: string;
   disabled?: boolean;
+  width: number;
+  height: number;
 }
 
-const ImageKanvas: React.FC<ImageKanvasProps> = ({ imageUrl, disabled }) => {
-  const containerRef = useRef<HTMLDivElement | null>(null);
-  const stageRef = useRef<any>(null);
-  const viewportRef = useRef<any>(null);
-  const imageNodeRef = useRef<any>(null);
+const ImageKanvas: React.FC<ImageKanvasProps> = ({
+  imageUrl,
+  width,
+  height,
+}) => {
+  const stageRef = useRef<Konva.Stage | null>(null);
+  const viewportRef = useRef<Konva.Layer | null>(null);
+  const imageNodeRef = useRef<Konva.Image | null>(null);
 
   const [img] = useImage(imageUrl, "anonymous");
 
+  const { mode, isOpen, startNew, activeFeedback } = useFeedbackDraftStore(
+    useShallow((s) => ({
+      mode: s.mode,
+      isOpen: s.isOpen,
+      startNew: s.startNew,
+      activeFeedback: s.activeFeedback,
+    }))
+  );
+  const { annotations, addAnnotation, activeTool, updateAnnotation } =
+    useAnnotationStore(
+      useShallow((s) => ({
+        annotations: s.annotations,
+        addAnnotation: s.addAnnotation,
+        updateAnnotation: s.updateAnnotation,
+        activeTool: s.activeTool,
+      }))
+    );
+
   const viewScale = useKanvasStore((s) => s.viewScale);
   const viewOffset = useKanvasStore((s) => s.viewOffset);
-  const activeTool = useKanvasStore((s) => s.activeTool);
-  const draftPin = useKanvasStore((s) => s.draftPin);
-  const setNaturalSize = useKanvasStore((s) => s.setNaturalSize);
   const zoomAtPoint = useKanvasStore((s) => s.zoomAtPoint);
-  const setDraftPin = useKanvasStore((s) => s.setDraftPin);
+
   const pan = useKanvasStore((s) => s.pan);
+  const naturalSize = useMemo(() => ({ w: width, h: height }), [width, height]);
+  const { ref: containerRef, size } = useResizeObserver<HTMLDivElement>();
 
-  const [naturalSize, setNaturalSizeLocal] = useState<{
-    w: number;
-    h: number;
-  } | null>(null);
-  const [stageSize, setStageSize] = useState({ w: 0, h: 0 });
-
-  const [display, setDisplay] = useState<{
-    scale: number;
-    x: number;
-    y: number;
-  } | null>(null);
-
+  const stageSize = useMemo(() => ({ w: size.width, h: size.height }), [size]);
   const isPanning = useRef(false);
-  const lastPos = useRef<{ x: number; y: number } | null>(null);
+  const lastPos = useRef<Point | null>(null);
 
-  useEffect(() => {
-    if (!img) return;
-    const w = img.naturalWidth;
-    const h = img.naturalHeight;
-    setNaturalSizeLocal({ w, h });
-    setNaturalSize(w, h);
-  }, [img]);
+  const display = useMemo(() => {
+    if (!stageSize.w || !stageSize.h) return null;
 
-  useEffect(() => {
-    if (!containerRef.current || !naturalSize) return;
+    const scale = Math.min(
+      stageSize.w / naturalSize.w,
+      stageSize.h / naturalSize.h
+    );
 
-    const compute = () => {
-      const rect = containerRef.current!.getBoundingClientRect();
-      const cw = rect.width;
-      const ch = rect.height;
+    const dw = naturalSize.w * scale;
+    const dh = naturalSize.h * scale;
 
-      const containScale = Math.min(cw / naturalSize.w, ch / naturalSize.h);
-
-      const dw = naturalSize.w * containScale;
-      const dh = naturalSize.h * containScale;
-
-      setStageSize({ w: cw, h: ch });
-
-      setDisplay({
-        scale: containScale,
-        x: (cw - dw) / 2,
-        y: (ch - dh) / 2,
-      });
+    return {
+      scale,
+      x: (stageSize.w - dw) / 2,
+      y: (stageSize.h - dh) / 2,
     };
+  }, [stageSize, naturalSize]);
 
-    compute();
-    const ro = new ResizeObserver(compute);
-    ro.observe(containerRef.current);
-    window.addEventListener("resize", compute);
-
-    return () => {
-      ro.disconnect();
-      window.removeEventListener("resize", compute);
-    };
-  }, [naturalSize]);
-
-  // -------------------------------
-  // Convert Stage → Image coords
-  // -------------------------------
   const stageToImageCoords = useCallback(
-    (p: { x: number; y: number } | null) => {
-      if (!p || !display || !naturalSize) return null;
+    (p: Point | null): Point | null => {
+      if (!p || !display) return null;
 
       const vx = (p.x - viewOffset.x) / viewScale;
       const vy = (p.y - viewOffset.y) / viewScale;
@@ -96,13 +87,18 @@ const ImageKanvas: React.FC<ImageKanvasProps> = ({ imageUrl, disabled }) => {
       const ix = (vx - display.x) / display.scale;
       const iy = (vy - display.y) / display.scale;
 
+      // ✅ BLOCK clicks outside image
+      if (ix < 0 || iy < 0 || ix > naturalSize.w || iy > naturalSize.h) {
+        return null;
+      }
+
       return { x: ix, y: iy };
     },
     [display, naturalSize, viewOffset, viewScale]
   );
 
   const imageToViewportCoords = useCallback(
-    (p: { x: number; y: number } | null) => {
+    (p: Point | null) => {
       if (!p || !display) return null;
 
       return {
@@ -113,7 +109,89 @@ const ImageKanvas: React.FC<ImageKanvasProps> = ({ imageUrl, disabled }) => {
     [display]
   );
 
-  const isAnnotating = activeTool !== "none";
+  const handlePointerDown = useCallback(
+    (e: Konva.KonvaEventObject<MouseEvent>) => {
+      const stage = stageRef.current;
+      if (!stage) return;
+
+      const pos = stage.getPointerPosition();
+      if (!pos) return;
+
+      // ✅ Ctrl + drag → PAN
+      if (e.evt.ctrlKey) {
+        isPanning.current = true;
+        lastPos.current = pos;
+        return;
+      }
+
+      const imgPos = stageToImageCoords(pos);
+      if (!imgPos) return;
+
+      // ✅ Only act if pin tool is active
+      if (activeTool !== "pin") return;
+
+      // ✅ Ensure feedback draft is open
+      if (!isOpen) {
+        startNew("single");
+      }
+
+      // ✅ SINGLE mode → move existing pin instead of adding
+      if (mode === "single") {
+        const existingPin = annotations.find((a) => a.tool === "pin");
+
+        if (existingPin) {
+          updateAnnotation(existingPin.id, "pin", {
+            position: imgPos,
+          });
+          return;
+        }
+      }
+
+      // ✅ MULTIPLE mode OR first pin
+      addAnnotation({
+        id: crypto.randomUUID(),
+        tool: "pin",
+        position: imgPos,
+        created_at: new Date().toISOString(),
+      });
+    },
+    [
+      activeTool,
+      annotations,
+      stageToImageCoords,
+      isOpen,
+      mode,
+      startNew,
+      addAnnotation,
+      updateAnnotation,
+    ]
+  );
+
+  const handlePointerMove = useCallback(() => {
+    if (!isPanning.current || !lastPos.current) return;
+
+    const stage = stageRef.current;
+    if (!stage) return;
+
+    const pos = stage.getPointerPosition();
+    if (!pos) return;
+
+    pan(pos.x - lastPos.current.x, pos.y - lastPos.current.y);
+    lastPos.current = pos;
+  }, [pan]);
+
+  const handlePointerUp = useCallback(() => {
+    isPanning.current = false;
+    lastPos.current = null;
+
+    // later: finalize rect / freehand
+  }, []);
+
+  const activeAnnotations = activeFeedback?.annotations
+    ? activeFeedback?.annotations
+    : annotations;
+
+  const uiScale = Math.pow(viewScale, 0.5);
 
   return (
     <div
@@ -124,56 +202,21 @@ const ImageKanvas: React.FC<ImageKanvasProps> = ({ imageUrl, disabled }) => {
         ref={stageRef}
         width={stageSize.w}
         height={stageSize.h}
-        onClick={() => {
-          if (activeTool !== "pin") return;
-
-          const pos = stageRef.current.getPointerPosition();
-          const imgPos = stageToImageCoords(pos);
-
-          if (!imgPos) return;
-
-          // create draft pin (image space)
-          setDraftPin(imgPos);
-
-          // OPTIONAL (recommended UX)
-          // auto switch to select mode after placing pin
-          // setTool("none");
-        }}
-        // ---------- WHEEL ZOOM ----------
         onWheel={(e) => {
-          // 🚫 Block normal wheel
-          if (!e.evt.ctrlKey || isAnnotating) return;
-
+          if (!e.evt.ctrlKey) return;
           e.evt.preventDefault();
 
-          const pointer = stageRef.current.getPointerPosition();
+          const stage = stageRef.current;
+          if (!stage) return;
+
+          const pointer = stage.getPointerPosition();
           if (!pointer) return;
 
           zoomAtPoint(pointer, e.evt.deltaY);
         }}
-        // ---------- PAN ----------
-        onMouseDown={(e) => {
-          if (isAnnotating) return;
-
-          isPanning.current = true;
-          lastPos.current = stageRef.current.getPointerPosition();
-        }}
-        onMouseMove={() => {
-          if (isAnnotating) return;
-
-          if (!isPanning.current || !lastPos.current) return;
-
-          const pos = stageRef.current.getPointerPosition();
-          const dx = pos.x - lastPos.current.x;
-          const dy = pos.y - lastPos.current.y;
-
-          pan(dx, dy);
-          lastPos.current = pos;
-        }}
-        onMouseUp={() => {
-          isPanning.current = false;
-          lastPos.current = null;
-        }}>
+        onMouseDown={handlePointerDown}
+        onMouseMove={handlePointerMove}
+        onMouseUp={handlePointerUp}>
         <Layer
           ref={viewportRef}
           x={viewOffset.x}
@@ -192,13 +235,26 @@ const ImageKanvas: React.FC<ImageKanvasProps> = ({ imageUrl, disabled }) => {
               scaleY={display.scale}
             />
           )}
-          {draftPin &&
-            (() => {
-              const p = imageToViewportCoords(draftPin);
-              if (!p) return null;
+          {activeAnnotations.map((a) => {
+            if (a.tool !== "pin") return null;
 
-              return <Circle x={p.x} y={p.y} radius={6} fill="red" />;
-            })()}
+            const p = imageToViewportCoords(a.position);
+            if (!p) return null;
+
+            return (
+              <Circle
+                key={a.id}
+                x={p.x}
+                y={p.y}
+                radius={5 / uiScale}
+                stroke="#ef4444"
+                strokeWidth={1.5 / uiScale}
+                shadowBlur={2 / uiScale}
+                shadowColor="black"
+                shadowOpacity={0.15}
+              />
+            );
+          })}
         </Layer>
       </Stage>
     </div>

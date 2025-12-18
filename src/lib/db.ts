@@ -27,26 +27,13 @@ const getWorkspaceFiles = async (): Promise<FileRow[]> => {
   return data;
 };
 
-// Add feedback point
-const addFeedback = async (
-  data: Omit<FeedbackRow, "id" | "created_at">
-): Promise<FeedbackRow> => {
-  const { data: row, error } = await supabase
-    .from("feedback")
-    .insert(data)
-    .select()
-    .single();
-
-  if (error) throw error;
-  return row;
-};
-
 // Get feedback for one file
 const getFeedbackForFile = async (fileId: string): Promise<FeedbackRow[]> => {
   const { data, error } = await supabase
     .from("feedback")
     .select("*")
-    .eq("file_id", fileId);
+    .eq("file_id", fileId)
+    .order("created_at", { ascending: false });
 
   if (error) throw error;
   return data;
@@ -78,11 +65,47 @@ async function getSingleFile(id: string): Promise<FileRow> {
   return data;
 }
 
+// Feedback
+const addFeedback = async (
+  data: Omit<FeedbackRow, "id" | "created_at">
+): Promise<FeedbackRow> => {
+  const { data: row, error } = await supabase
+    .from("feedback")
+    .insert(data)
+    .select()
+    .single();
+
+  if (error) throw error;
+  return row;
+};
+
+const updateFeedbackComment = async (params: {
+  id: string;
+  comment: string | null;
+}): Promise<FeedbackRow> => {
+  const { data, error } = await supabase
+    .from("feedback")
+    .update({ comment: params.comment })
+    .eq("id", params.id)
+    .select()
+    .single();
+
+  if (error) throw error;
+  return data;
+};
+const deleteFeedback = async (id: string): Promise<void> => {
+  const { error } = await supabase.from("feedback").delete().eq("id", id);
+
+  if (error) throw error;
+};
+
 export {
   addFeedback,
   deleteAllFiles,
+  deleteFeedback,
   getFeedbackForFile,
-  getWorkspaceFiles,
-  uploadFileRow,
   getSingleFile,
+  getWorkspaceFiles,
+  updateFeedbackComment,
+  uploadFileRow,
 };

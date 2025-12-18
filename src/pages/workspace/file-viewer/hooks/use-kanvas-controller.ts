@@ -1,16 +1,8 @@
 import { create } from "zustand";
 
-export type Tool = "none" | "pin" | "rect";
-
 interface KanvasStore {
   viewScale: number;
   viewOffset: { x: number; y: number };
-  activeTool: Tool;
-  natural: { w: number; h: number } | null;
-  draftPin: { x: number; y: number } | null;
-
-  setTool: (tool: Tool) => void;
-  setNaturalSize: (w: number, h: number) => void;
 
   zoomIn: () => void;
   zoomOut: () => void;
@@ -18,20 +10,12 @@ interface KanvasStore {
 
   resetView: () => void;
   pan: (dx: number, dy: number) => void;
-  setDraftPin: (p: { x: number; y: number } | null) => void;
 }
 
 export const useKanvasStore = create<KanvasStore>((set) => ({
   viewScale: 1,
   draftPin: null,
   viewOffset: { x: 0, y: 0 },
-
-  activeTool: "none",
-  natural: null,
-
-  setTool: (tool) => set({ activeTool: tool }),
-
-  setNaturalSize: (w, h) => set({ natural: { w, h } }),
 
   // Simple zoom — toolbar buttons
   zoomIn: () =>
@@ -73,5 +57,4 @@ export const useKanvasStore = create<KanvasStore>((set) => ({
         y: state.viewOffset.y + dy,
       },
     })),
-  setDraftPin: (p) => set({ draftPin: p }),
 }));

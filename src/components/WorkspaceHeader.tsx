@@ -39,7 +39,7 @@ export const WorkspaceHeader = () => {
   return (
     <header className="flex items-center justify-between border-b bg-card px-4 py-2">
       <div className="flex items-center">
-        <span className="font-semibold text-base">Workspace</span>
+        <span className="font-semibold text-base">Home</span>
       </div>
 
       <div className="flex items-center gap-4 **:data-[slot=separator]:!h-5">
