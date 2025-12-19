@@ -1,68 +1,108 @@
+import { Check, Circle, LineSquiggle, Pencil, Square } from "lucide-react";
+
 import { Button } from "@/components/ui/button";
-import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import {
-  MousePointer,
-  Pin,
-  RefreshCw,
-  Square,
-  ZoomIn,
-  ZoomOut,
-} from "lucide-react";
-import { useAnnotationStore } from "../hooks/use-annotation";
-import { useKanvasStore } from "../hooks/use-kanvas-controller";
-import type { Tool } from "../types";
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
+import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
+import { cn } from "@/lib/utils";
+import useAnnotationStore from "../hooks/use-annotation-store";
+import type { Shape } from "../types";
 
-export const AnnotationToolbar = () => {
-  const activeTool = useAnnotationStore((s) => s.activeTool);
-  const setTool = useAnnotationStore((s) => s.setTool);
+interface ToolOption {
+  value: Shape;
+  label: string;
+  icon: React.ReactNode;
+}
 
-  const zoomIn = useKanvasStore((s) => s.zoomIn);
-  const zoomOut = useKanvasStore((s) => s.zoomOut);
-  const resetView = useKanvasStore((s) => s.resetView);
+const TOOL_OPTIONS: ToolOption[] = [
+  { value: "rect", label: "Rectangle", icon: <Square size={14} /> },
+  { value: "freehand", label: "Freehand", icon: <Pencil size={14} /> },
+  { value: "circle", label: "Circle", icon: <Circle size={14} /> },
+];
+
+const COLORS: string[] = ["#ef4444", "#22c55e", "#3b82f6", "#a855f7"];
+
+export default function AnnotationToolbar() {
+  const { annotations, activeColor, setColor, setShape, activeShape } =
+    useAnnotationStore();
+
+  const hasAnnotations = annotations.length > 0;
 
   return (
-    <div className="flex items-center gap-2 w-max">
-      {/* Tools */}
-      <ToggleGroup
-        type="single"
-        value={activeTool}
-        variant={"outline"}
-        onValueChange={(value) => {
-          if (!value) return;
-          setTool(value as Tool);
-        }}
-        className="">
-        <ToggleGroupItem title="Select" value="none" aria-label="Select">
-          <MousePointer size={18} />
-        </ToggleGroupItem>
+    <div className="flex ">
+      <Popover>
+        <PopoverTrigger tabIndex={-1} title="Annotation Tools">
+          <Button
+            asChild
+            className={`${
+              hasAnnotations &&
+              "dark:border-indigo-600 dark:bg-indigo-950/30 dark:hover:bg-indigo-900/30"
+            }`}
+            size={"icon"}
+            variant={"outline"}>
+            <span className="flex h-9 w-9 items-center justify-center">
+              <LineSquiggle
+                className={cn("size-4", hasAnnotations && "stroke-indigo-500")}
+              />
+            </span>
+          </Button>
+        </PopoverTrigger>
+        <PopoverContent>
+          <div>
+            <div className="mb-3">
+              <p className="text-sm text-muted-foreground mb-1">Shape</p>
+              <ToggleGroup
+                size={"lg"}
+                type="single"
+                value={activeShape}
+                onValueChange={(value) => {
+                  if (!value) return;
+                  setShape(value as Shape);
+                }}
+                className="flex gap-1">
+                {TOOL_OPTIONS.map((tool) => (
+                  <ToggleGroupItem
+                    title={tool.label}
+                    key={tool.value}
+                    value={tool.value}
+                    aria-label={tool.label}
+                    className="border data-[state=on]:bg-indigo-950 data-[state=on]:text-indigo-50 data-[state=on]:border-indigo-500 hover:bg-indigo-700/20">
+                    {tool.icon}
+                  </ToggleGroupItem>
+                ))}
+              </ToggleGroup>
+            </div>
 
-        <ToggleGroupItem title="Pin" value="pin" aria-label="Pin">
-          <Pin size={18} />
-        </ToggleGroupItem>
+            <div>
+              <p className="text-sm text-muted-foreground mb-1">Color</p>
 
-        <ToggleGroupItem title="Rectangle" value="rect" aria-label="Rectangle">
-          <Square size={18} />
-        </ToggleGroupItem>
-      </ToggleGroup>
-
-      <div className="w-px h-6 bg-border mx-1" />
-
-      {/* Zoom Controls */}
-      <Button variant="outline" size="icon" onClick={zoomOut}>
-        <ZoomOut size={18} />
-      </Button>
-
-      <Button variant="outline" size="icon" onClick={zoomIn}>
-        <ZoomIn size={18} />
-      </Button>
-
-      <Button
-        title="Reset Zoom"
-        variant="outline"
-        size="icon"
-        onClick={resetView}>
-        <RefreshCw size={18} />
-      </Button>
+              <ToggleGroup
+                size={"lg"}
+                type="single"
+                value={activeColor}
+                onValueChange={(value) => {
+                  if (!value) return;
+                  setColor(value);
+                }}
+                className="flex gap-2">
+                {COLORS.map((color) => (
+                  <ToggleGroupItem
+                    key={color}
+                    value={color}
+                    aria-label={`Color ${color}`}
+                    className="size-7 rounded-full! data-[state=on]:ring-1"
+                    style={{ backgroundColor: color }}>
+                    {activeColor === color && <Check />}
+                  </ToggleGroupItem>
+                ))}
+              </ToggleGroup>
+            </div>
+          </div>
+        </PopoverContent>
+      </Popover>
     </div>
   );
-};
+}

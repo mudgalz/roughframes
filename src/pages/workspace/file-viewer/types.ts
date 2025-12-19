@@ -1,34 +1,32 @@
-type Tool = "none" | "pin" | "rect" | "freehand";
-type Point = { x: number; y: number };
-interface BaseAnnotation {
-  id: string;
-  tool: Tool;
-  created_at: string;
-}
-interface PinAnnotation extends BaseAnnotation {
-  tool: "pin";
-  position: Point;
-}
-interface RectAnnotation extends BaseAnnotation {
-  tool: "rect";
-  position: Point;
-  size: {
-    width: number;
-    height: number;
-  };
-}
-interface FreehandAnnotation extends BaseAnnotation {
-  tool: "freehand";
-  points: Array<Point>;
-}
-type Annotation = PinAnnotation | RectAnnotation | FreehandAnnotation;
+export type Shape = "none" | "rect" | "circle" | "freehand";
 
-export type {
-  Annotation,
-  BaseAnnotation,
-  FreehandAnnotation,
-  PinAnnotation,
-  Point,
-  RectAnnotation,
-  Tool,
-};
+export interface Point {
+  x: number;
+  y: number;
+}
+
+export interface BaseAnnotation {
+  id: string;
+  shape: Shape;
+  created_at: string;
+  color: string;
+}
+
+/**
+ * Rect & Circle are defined by two points
+ */
+export interface BoxAnnotation extends BaseAnnotation {
+  shape: "rect" | "circle";
+  start: Point; // image space
+  end: Point; // image space
+}
+
+/**
+ * Freehand uses reduced image-space points
+ */
+export interface FreehandAnnotation extends BaseAnnotation {
+  shape: "freehand";
+  points: Point[];
+}
+
+export type Annotation = BoxAnnotation | FreehandAnnotation;

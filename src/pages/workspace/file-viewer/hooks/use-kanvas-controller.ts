@@ -1,39 +1,52 @@
+import { clamp } from "@/lib/utils";
 import { create } from "zustand";
+
+interface Point {
+  x: number;
+  y: number;
+}
 
 interface KanvasStore {
   viewScale: number;
-  viewOffset: { x: number; y: number };
+  viewOffset: Point;
 
   zoomIn: () => void;
   zoomOut: () => void;
-  zoomAtPoint: (point: { x: number; y: number }, delta: number) => void;
+  zoomAtPoint: (point: Point, delta: number) => void;
 
   resetView: () => void;
   pan: (dx: number, dy: number) => void;
+  setViewOffset: (offset: Point) => void;
 }
+
+const MIN_SCALE = 0.5;
+const MAX_SCALE = 5;
+const ZOOM_STEP = 1.15;
+const WHEEL_STEP = 1.1;
 
 export const useKanvasStore = create<KanvasStore>((set) => ({
   viewScale: 1,
-  draftPin: null,
   viewOffset: { x: 0, y: 0 },
 
-  // Simple zoom — toolbar buttons
   zoomIn: () =>
     set((state) => ({
-      viewScale: Math.min(state.viewScale * 1.15, 8),
+      viewScale: clamp(state.viewScale * ZOOM_STEP, MIN_SCALE, MAX_SCALE),
     })),
 
   zoomOut: () =>
     set((state) => ({
-      viewScale: Math.max(state.viewScale / 1.15, 0.2),
+      viewScale: clamp(state.viewScale / ZOOM_STEP, MIN_SCALE, MAX_SCALE),
     })),
-
-  // Accurate zoom (scroll wheel zoom)
   zoomAtPoint: (point, delta) =>
     set((state) => {
-      const scaleBy = 1.1;
       const oldScale = state.viewScale;
-      const newScale = delta > 0 ? oldScale / scaleBy : oldScale * scaleBy;
+      const scaleFactor = delta > 0 ? 1 / WHEEL_STEP : WHEEL_STEP;
+      const newScale = clamp(oldScale * scaleFactor, MIN_SCALE, MAX_SCALE);
+
+      // ✅ IMPORTANT FIX
+      if (newScale === oldScale) {
+        return {}; // or return undefined;
+      }
 
       return {
         viewScale: newScale,
@@ -57,4 +70,9 @@ export const useKanvasStore = create<KanvasStore>((set) => ({
         y: state.viewOffset.y + dy,
       },
     })),
+
+  setViewOffset: (offset) =>
+    set({
+      viewOffset: offset,
+    }),
 }));

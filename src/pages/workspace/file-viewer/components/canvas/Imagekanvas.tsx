@@ -1,63 +1,58 @@
-// image/ImageKanvas.tsx
-import { useShallow } from "zustand/shallow";
-
-import useResizeObserver from "@/hooks/use-resize-observer";
 import type Konva from "konva";
 import React, { useCallback, useMemo, useRef } from "react";
-import { Circle, Image as KonvaImage, Layer, Stage } from "react-konva";
+import {
+  Ellipse,
+  Image as KonvaImage,
+  Layer,
+  Line,
+  Rect,
+  Stage,
+} from "react-konva";
 import useImage from "use-image";
-import { useAnnotationStore } from "../../hooks/use-annotation";
-import { useFeedbackDraftStore } from "../../hooks/use-feedback-draft";
+
+import useResizeObserver from "@/hooks/use-resize-observer";
+import useAnnotationStore from "../../hooks/use-annotation-store";
 import { useKanvasStore } from "../../hooks/use-kanvas-controller";
-import type { Point } from "../../types";
+import type { Annotation, Point } from "../../types";
+import { isEnoughDrawn, simplifyRDP } from "./utils";
 
 export interface ImageKanvasProps {
   imageUrl: string;
-  disabled?: boolean;
   width: number;
   height: number;
+  annotations: Annotation[];
 }
 
 const ImageKanvas: React.FC<ImageKanvasProps> = ({
   imageUrl,
   width,
   height,
+  annotations,
 }) => {
   const stageRef = useRef<Konva.Stage | null>(null);
-  const viewportRef = useRef<Konva.Layer | null>(null);
-  const imageNodeRef = useRef<Konva.Image | null>(null);
+
+  // live shape & positions
+  const rectRef = useRef<Konva.Rect | null>(null);
+  const ellipseRef = useRef<Konva.Ellipse | null>(null);
+  const lineRef = useRef<Konva.Line | null>(null);
+  const liveRef = useRef<Annotation | null>(null);
+  const rawPointsRef = useRef<Point[]>([]);
+  const liveLayerRef = useRef<Konva.Layer | null>(null);
+
+  // panning
+  const isPanning = useRef(false);
+  const lastPos = useRef<Point | null>(null);
 
   const [img] = useImage(imageUrl, "anonymous");
 
-  const { mode, isOpen, startNew, activeFeedback } = useFeedbackDraftStore(
-    useShallow((s) => ({
-      mode: s.mode,
-      isOpen: s.isOpen,
-      startNew: s.startNew,
-      activeFeedback: s.activeFeedback,
-    }))
-  );
-  const { annotations, addAnnotation, activeTool, updateAnnotation } =
-    useAnnotationStore(
-      useShallow((s) => ({
-        annotations: s.annotations,
-        addAnnotation: s.addAnnotation,
-        updateAnnotation: s.updateAnnotation,
-        activeTool: s.activeTool,
-      }))
-    );
+  const { activeShape, activeColor, commitLiveAnnotation } =
+    useAnnotationStore();
+  const { viewScale, viewOffset, pan, zoomAtPoint } = useKanvasStore();
 
-  const viewScale = useKanvasStore((s) => s.viewScale);
-  const viewOffset = useKanvasStore((s) => s.viewOffset);
-  const zoomAtPoint = useKanvasStore((s) => s.zoomAtPoint);
-
-  const pan = useKanvasStore((s) => s.pan);
   const naturalSize = useMemo(() => ({ w: width, h: height }), [width, height]);
   const { ref: containerRef, size } = useResizeObserver<HTMLDivElement>();
 
   const stageSize = useMemo(() => ({ w: size.width, h: size.height }), [size]);
-  const isPanning = useRef(false);
-  const lastPos = useRef<Point | null>(null);
 
   const display = useMemo(() => {
     if (!stageSize.w || !stageSize.h) return null;
@@ -67,19 +62,16 @@ const ImageKanvas: React.FC<ImageKanvasProps> = ({
       stageSize.h / naturalSize.h
     );
 
-    const dw = naturalSize.w * scale;
-    const dh = naturalSize.h * scale;
-
     return {
       scale,
-      x: (stageSize.w - dw) / 2,
-      y: (stageSize.h - dh) / 2,
+      x: (stageSize.w - naturalSize.w * scale) / 2,
+      y: (stageSize.h - naturalSize.h * scale) / 2,
     };
   }, [stageSize, naturalSize]);
 
-  const stageToImageCoords = useCallback(
-    (p: Point | null): Point | null => {
-      if (!p || !display) return null;
+  const stageToImage = useCallback(
+    (p: Point): Point | null => {
+      if (!display) return null;
 
       const vx = (p.x - viewOffset.x) / viewScale;
       const vy = (p.y - viewOffset.y) / viewScale;
@@ -87,174 +79,300 @@ const ImageKanvas: React.FC<ImageKanvasProps> = ({
       const ix = (vx - display.x) / display.scale;
       const iy = (vy - display.y) / display.scale;
 
-      // ✅ BLOCK clicks outside image
-      if (ix < 0 || iy < 0 || ix > naturalSize.w || iy > naturalSize.h) {
-        return null;
-      }
-
+      if (ix < 0 || iy < 0 || ix > width || iy > height) return null;
       return { x: ix, y: iy };
     },
-    [display, naturalSize, viewOffset, viewScale]
+    [display, viewOffset, viewScale, width, height]
   );
 
-  const imageToViewportCoords = useCallback(
-    (p: Point | null) => {
-      if (!p || !display) return null;
-
-      return {
-        x: display.x + p.x * display.scale,
-        y: display.y + p.y * display.scale,
-      };
-    },
-    [display]
-  );
-
-  const handlePointerDown = useCallback(
-    (e: Konva.KonvaEventObject<MouseEvent>) => {
-      const stage = stageRef.current;
-      if (!stage) return;
-
-      const pos = stage.getPointerPosition();
-      if (!pos) return;
-
-      // ✅ Ctrl + drag → PAN
-      if (e.evt.ctrlKey) {
-        isPanning.current = true;
-        lastPos.current = pos;
-        return;
-      }
-
-      const imgPos = stageToImageCoords(pos);
-      if (!imgPos) return;
-
-      // ✅ Only act if pin tool is active
-      if (activeTool !== "pin") return;
-
-      // ✅ Ensure feedback draft is open
-      if (!isOpen) {
-        startNew("single");
-      }
-
-      // ✅ SINGLE mode → move existing pin instead of adding
-      if (mode === "single") {
-        const existingPin = annotations.find((a) => a.tool === "pin");
-
-        if (existingPin) {
-          updateAnnotation(existingPin.id, "pin", {
-            position: imgPos,
-          });
-          return;
-        }
-      }
-
-      // ✅ MULTIPLE mode OR first pin
-      addAnnotation({
-        id: crypto.randomUUID(),
-        tool: "pin",
-        position: imgPos,
-        created_at: new Date().toISOString(),
-      });
-    },
-    [
-      activeTool,
-      annotations,
-      stageToImageCoords,
-      isOpen,
-      mode,
-      startNew,
-      addAnnotation,
-      updateAnnotation,
-    ]
-  );
-
-  const handlePointerMove = useCallback(() => {
-    if (!isPanning.current || !lastPos.current) return;
-
-    const stage = stageRef.current;
-    if (!stage) return;
-
-    const pos = stage.getPointerPosition();
+  const handlePointerDown = (e: Konva.KonvaEventObject<MouseEvent>) => {
+    const pos = stageRef.current?.getPointerPosition();
     if (!pos) return;
 
-    pan(pos.x - lastPos.current.x, pos.y - lastPos.current.y);
-    lastPos.current = pos;
-  }, [pan]);
+    const shouldPan = e.evt.ctrlKey || activeShape === "none";
 
-  const handlePointerUp = useCallback(() => {
-    isPanning.current = false;
-    lastPos.current = null;
+    if (shouldPan) {
+      isPanning.current = true;
+      lastPos.current = pos;
+      return;
+    }
 
-    // later: finalize rect / freehand
-  }, []);
+    const imgPos = stageToImage(pos);
+    if (!imgPos) return;
 
-  const activeAnnotations = activeFeedback?.annotations
-    ? activeFeedback?.annotations
-    : annotations;
+    const base = {
+      id: crypto.randomUUID(),
+      created_at: new Date().toISOString(),
+      color: activeColor,
+    };
 
-  const uiScale = Math.pow(viewScale, 0.5);
+    if (activeShape === "rect" || activeShape === "circle") {
+      liveRef.current = {
+        ...base,
+        shape: activeShape,
+        start: imgPos,
+        end: imgPos,
+      };
+    }
+
+    if (activeShape === "freehand") {
+      rawPointsRef.current = [];
+
+      liveRef.current = {
+        ...base,
+        shape: "freehand",
+        points: [],
+      };
+    }
+  };
+
+  const handlePointerMove = () => {
+    const pos = stageRef.current?.getPointerPosition();
+    if (!pos) return;
+
+    if (isPanning.current && lastPos.current) {
+      pan(pos.x - lastPos.current.x, pos.y - lastPos.current.y);
+      lastPos.current = pos;
+      return;
+    }
+
+    if (!liveRef.current || !display) return;
+    const imgPos = stageToImage(pos);
+    if (!imgPos || !liveRef.current) return;
+
+    // RECT / CIRCLE
+    if (
+      liveRef.current.shape === "rect" ||
+      liveRef.current.shape === "circle"
+    ) {
+      liveRef.current.end = imgPos;
+
+      const x1 = Math.min(liveRef.current.start.x, imgPos.x);
+      const y1 = Math.min(liveRef.current.start.y, imgPos.y);
+      const x2 = Math.max(liveRef.current.start.x, imgPos.x);
+      const y2 = Math.max(liveRef.current.start.y, imgPos.y);
+
+      const vx = display.x + x1 * display.scale;
+      const vy = display.y + y1 * display.scale;
+      const vw = (x2 - x1) * display.scale;
+      const vh = (y2 - y1) * display.scale;
+
+      if (liveRef.current.shape === "rect") {
+        rectRef.current?.setAttrs({ x: vx, y: vy, width: vw, height: vh });
+      } else {
+        ellipseRef.current?.setAttrs({
+          x: vx + vw / 2,
+          y: vy + vh / 2,
+          radiusX: vw / 2,
+          radiusY: vh / 2,
+        });
+      }
+    }
+
+    // FREEHAND
+    if (liveRef.current.shape === "freehand") {
+      const vx = display.x + imgPos.x * display.scale;
+      const vy = display.y + imgPos.y * display.scale;
+
+      rawPointsRef.current.push({ x: vx, y: vy });
+
+      if (rawPointsRef.current.length < 3) return;
+
+      const p1 = rawPointsRef.current.at(-2)!;
+      const p2 = rawPointsRef.current.at(-1)!;
+
+      const cx = (p1.x + p2.x) / 2;
+      const cy = (p1.y + p2.y) / 2;
+
+      liveRef.current.points.push({ x: cx, y: cy });
+      lineRef.current?.points(
+        liveRef.current.points.flatMap((p) => [p.x, p.y])
+      );
+    }
+
+    liveLayerRef.current?.draw();
+  };
+
+  const handlePointerUp = () => {
+    if (isPanning.current) {
+      isPanning.current = false;
+      lastPos.current = null;
+      return;
+    }
+
+    if (!liveRef.current || !display) return;
+
+    if (liveRef.current.shape === "freehand") {
+      const simplified = simplifyRDP(rawPointsRef.current, 1.2);
+
+      liveRef.current.points = simplified.map((p) => ({
+        x: (p.x - display.x) / display.scale,
+        y: (p.y - display.y) / display.scale,
+      }));
+
+      rawPointsRef.current = [];
+    }
+
+    if (!isEnoughDrawn(liveRef.current)) {
+      cleanup();
+      return;
+    }
+
+    commitLiveAnnotation(liveRef.current);
+    cleanup();
+  };
+
+  const cleanup = () => {
+    liveRef.current = null;
+    rawPointsRef.current = [];
+
+    rectRef.current?.setAttrs({
+      x: 0,
+      y: 0,
+      width: 0,
+      height: 0,
+    });
+
+    ellipseRef.current?.setAttrs({
+      x: 0,
+      y: 0,
+      radiusX: 0,
+      radiusY: 0,
+    });
+
+    lineRef.current?.points([]);
+
+    liveLayerRef.current?.draw();
+  };
+  const viewport = {
+    x: viewOffset.x,
+    y: viewOffset.y,
+    scaleX: viewScale,
+    scaleY: viewScale,
+  };
 
   return (
-    <div
-      ref={containerRef}
-      className="w-full h-full overflow-hidden relative"
-      style={{ minHeight: 0 }}>
+    <div ref={containerRef} className="w-full h-full overflow-hidden">
       <Stage
         ref={stageRef}
         width={stageSize.w}
         height={stageSize.h}
-        onWheel={(e) => {
-          if (!e.evt.ctrlKey) return;
-          e.evt.preventDefault();
-
-          const stage = stageRef.current;
-          if (!stage) return;
-
-          const pointer = stage.getPointerPosition();
-          if (!pointer) return;
-
-          zoomAtPoint(pointer, e.evt.deltaY);
-        }}
         onMouseDown={handlePointerDown}
         onMouseMove={handlePointerMove}
-        onMouseUp={handlePointerUp}>
-        <Layer
-          ref={viewportRef}
-          x={viewOffset.x}
-          y={viewOffset.y}
-          scaleX={viewScale}
-          scaleY={viewScale}>
+        onMouseUp={handlePointerUp}
+        onWheel={(e) => {
+          e.evt.preventDefault();
+          const p = stageRef.current?.getPointerPosition();
+          if (p) zoomAtPoint(p, e.evt.deltaY);
+        }}>
+        <Layer {...viewport}>
           {img && display && (
             <KonvaImage
-              ref={imageNodeRef}
               image={img}
-              width={naturalSize!.w}
-              height={naturalSize!.h}
               x={display.x}
               y={display.y}
               scaleX={display.scale}
               scaleY={display.scale}
+              width={width}
+              height={height}
             />
           )}
-          {activeAnnotations.map((a) => {
-            if (a.tool !== "pin") return null;
+        </Layer>
 
-            const p = imageToViewportCoords(a.position);
-            if (!p) return null;
+        {/* Live Drawing */}
+        <Layer ref={liveLayerRef} {...viewport} listening={false}>
+          <Rect
+            strokeWidth={2}
+            strokeScaleEnabled={false}
+            ref={rectRef}
+            stroke={activeColor}
+          />
+          <Ellipse
+            ref={ellipseRef}
+            stroke={activeColor}
+            radiusX={0}
+            radiusY={0}
+            strokeWidth={2}
+            strokeScaleEnabled={false}
+          />
+          <Line
+            ref={lineRef}
+            stroke={activeColor}
+            lineCap="round"
+            lineJoin="round"
+            strokeWidth={2}
+            strokeScaleEnabled={false}
+          />
+        </Layer>
 
-            return (
-              <Circle
-                key={a.id}
-                x={p.x}
-                y={p.y}
-                radius={5 / uiScale}
-                stroke="#ef4444"
-                strokeWidth={1.5 / uiScale}
-                shadowBlur={2 / uiScale}
-                shadowColor="black"
-                shadowOpacity={0.15}
-              />
-            );
-          })}
+        {/* Saved Annotations */}
+        <Layer {...viewport}>
+          {display &&
+            annotations.map((a) => {
+              // RECT / CIRCLE
+              if (a.shape === "rect" || a.shape === "circle") {
+                const x1 = Math.min(a.start.x, a.end.x);
+                const y1 = Math.min(a.start.y, a.end.y);
+                const x2 = Math.max(a.start.x, a.end.x);
+                const y2 = Math.max(a.start.y, a.end.y);
+
+                const vx = display.x + x1 * display.scale;
+                const vy = display.y + y1 * display.scale;
+                const vw = (x2 - x1) * display.scale;
+                const vh = (y2 - y1) * display.scale;
+
+                if (a.shape === "rect") {
+                  return (
+                    <Rect
+                      key={a.id}
+                      x={vx}
+                      y={vy}
+                      width={vw}
+                      height={vh}
+                      stroke={a.color}
+                      strokeWidth={2}
+                      strokeScaleEnabled={false}
+                    />
+                  );
+                }
+
+                // CIRCLE / ELLIPSE
+                return (
+                  <Ellipse
+                    key={a.id}
+                    x={vx + vw / 2}
+                    y={vy + vh / 2}
+                    radiusX={vw / 2}
+                    radiusY={vh / 2}
+                    stroke={a.color}
+                    strokeWidth={2}
+                    strokeScaleEnabled={false}
+                  />
+                );
+              }
+
+              // FREEHAND
+              if (a.shape === "freehand") {
+                const points = a.points.flatMap((p) => [
+                  display.x + p.x * display.scale,
+                  display.y + p.y * display.scale,
+                ]);
+
+                return (
+                  <Line
+                    key={a.id}
+                    points={points}
+                    stroke={a.color}
+                    strokeWidth={2}
+                    lineCap="round"
+                    lineJoin="round"
+                    strokeScaleEnabled={false}
+                  />
+                );
+              }
+
+              return null;
+            })}
         </Layer>
       </Stage>
     </div>

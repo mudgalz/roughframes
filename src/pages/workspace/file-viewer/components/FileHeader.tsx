@@ -3,7 +3,6 @@ import type { FileRow } from "@/lib/types";
 import { ArrowLeft, PanelLeft, PanelRight } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { useFeedbackPanel } from "../hooks/use-feedback-panel";
-import { AnnotationToolbar } from "./AnnotationToolbar";
 
 export default function FileHeader(props: { file: FileRow }) {
   const { isOpen, toggle } = useFeedbackPanel();
@@ -22,9 +21,7 @@ export default function FileHeader(props: { file: FileRow }) {
           {file.filename}.{file.format}
         </h1>
       </div>
-      <div className="ml-auto">
-        <AnnotationToolbar />
-      </div>
+
       <Button
         variant="outline"
         size="icon"

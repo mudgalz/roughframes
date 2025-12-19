@@ -1,5 +1,5 @@
 import type { FeedbackRow } from "@/lib/types";
-import { useFeedbackDraftStore } from "../../hooks/use-feedback-draft";
+import { useFeedbakStore } from "../../hooks/use-feedback-store";
 
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 
@@ -22,7 +22,7 @@ interface Props {
 }
 
 export default function FeedbackItem({ feedback }: Props) {
-  const { openExisting, activeFeedback, resetAll } = useFeedbackDraftStore();
+  const { openExisting, activeFeedback, clear } = useFeedbakStore();
   const { remove, update } = useFeedbackMutation(feedback.file_id);
 
   const handleEdit = () => {
@@ -37,7 +37,7 @@ export default function FeedbackItem({ feedback }: Props) {
     if (!hasAnnotations) return;
 
     if (activeFeedback?.id === feedback.id) {
-      resetAll();
+      clear();
     } else {
       openExisting(feedback);
     }
@@ -50,15 +50,13 @@ export default function FeedbackItem({ feedback }: Props) {
     <Card
       onClick={handleSelect}
       className={cn(
-        "group relative transition-all duration-100",
+        "group relative transition-all duration-100 py-3",
         hasAnnotations && "cursor-pointer",
-        hasAnnotations &&
-          !isActive &&
-          "hover:ring-1 hover:ring-muted-foreground/40",
-        isActive && "ring-2 ring-emerald-500"
+        hasAnnotations && !isActive && "hover:border-muted-foreground/40",
+        isActive && "border-indigo-500 bg-indigo-950/30"
       )}>
-      <CardHeader className="flex items-center justify-between">
-        <Avatar className="justify-self-start">
+      <CardHeader className="flex items-center justify-between px-3">
+        <Avatar className="justify-self-start size-7">
           <AvatarFallback className="bg-primary text-primary-foreground text-sm">
             {feedback.added_by?.charAt(0) ?? "A"}
           </AvatarFallback>
@@ -98,7 +96,7 @@ export default function FeedbackItem({ feedback }: Props) {
         </DropdownMenu>
       </CardHeader>
       {/* COMMENT */}
-      <CardContent className="pt-0 space-y-2">
+      <CardContent className="pt-0 space-y-2 px-3">
         <p className="text-sm leading-relaxed text-foreground">
           {feedback.comment}
         </p>

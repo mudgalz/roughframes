@@ -1,30 +1,30 @@
 import { Button } from "@/components/ui/button";
+import { Spinner } from "@/components/ui/spinner";
 import { Textarea } from "@/components/ui/textarea";
-import { Toggle } from "@/components/ui/toggle";
 import { useFeedbackMutation } from "@/hooks/use-feedback";
 import { useUser } from "@/hooks/use-user";
-import { CircleDot, CircleEllipsis, Send } from "lucide-react";
+import { Send } from "lucide-react";
 import { useState } from "react";
-import { useAnnotationStore } from "../../hooks/use-annotation";
-import { useFeedbackDraftStore } from "../../hooks/use-feedback-draft";
-import { Spinner } from "@/components/ui/spinner";
+import useAnnotationStore from "../../hooks/use-annotation-store";
+import { useFeedbakStore } from "../../hooks/use-feedback-store";
+import AnnotationToolbar from "../AnnotationToolbar";
 
 export default function FeedbackField(props: { fileId: string }) {
   const { fileId } = props;
   const [comment, setComment] = useState("");
   const user = useUser((s) => s.user);
 
-  const { mode, startNew, resetAll, setMode } = useFeedbackDraftStore();
+  const { clear } = useFeedbakStore();
   const { add } = useFeedbackMutation(fileId);
-  const { setTool, annotations, clearAnnotations } = useAnnotationStore();
+  const { setShape, annotations, clearAnnotations } = useAnnotationStore();
+
   const handleStart = () => {
-    startNew("single");
-    setTool("pin");
+    clear();
+    setShape("rect");
   };
 
   const handleCancel = () => {
-    resetAll();
-    setTool("none");
+    setShape("none");
     clearAnnotations();
     setComment("");
   };
@@ -40,7 +40,6 @@ export default function FeedbackField(props: { fileId: string }) {
     await add.mutateAsync(feedback);
 
     clearAnnotations();
-    resetAll();
     setComment("");
   };
 
@@ -55,21 +54,9 @@ export default function FeedbackField(props: { fileId: string }) {
         onChange={(e) => setComment(e.target.value)}
         className="dark:bg-transparent border-none focus-visible:ring-0 resize-none min-h-0 max-h-60 custom-scroll"
       />
-      <div className="flex justify-between items-center px-2">
-        <Toggle
-          title={`Toggle ${mode} annotation mode`}
-          aria-label="Toggle multiple annotations"
-          pressed={mode === "multiple"}
-          onPressedChange={(pressed) =>
-            setMode(pressed ? "multiple" : "single")
-          }>
-          {mode === "multiple" ? (
-            <CircleEllipsis className="size-5" />
-          ) : (
-            <CircleDot className="size-5" />
-          )}
-        </Toggle>
 
+      <div className="flex justify-between items-center px-2">
+        <AnnotationToolbar />
         <div className="flex gap-2 items-center">
           {isAdding && (
             <Button size={"sm"} variant="outline" onClick={handleCancel}>
@@ -79,6 +66,7 @@ export default function FeedbackField(props: { fileId: string }) {
           <Button
             onClick={handleSave}
             size={"sm"}
+            disabled={!comment.trimStart()}
             className="bg-indigo-400 p-0 hover:bg-indigo-500">
             {add.isPending ? <Spinner /> : <Send />}
           </Button>

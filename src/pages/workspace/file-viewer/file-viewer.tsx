@@ -19,10 +19,10 @@ const FileViewer = () => {
       </div>
     );
   return (
-    <div className="h-screen flex flex-col p-2 gap-2 overflow-hidden">
+    <div className="h-screen flex flex-col p-1 gap-1 overflow-hidden">
       <FileHeader file={data} />
 
-      <div className="flex flex-1 gap-2 overflow-hidden">
+      <div className="flex flex-1 gap-1 overflow-hidden">
         <div className="flex-1 bg-muted/50 rounded-md overflow-hidden">
           <MediaPreview file={data} />
         </div>

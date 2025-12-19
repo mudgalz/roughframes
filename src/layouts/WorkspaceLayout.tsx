@@ -1,8 +1,6 @@
-import { GlobalConfirmDialog } from "@/components/global-confirm-dialog";
 import GlobalUploadPanel from "@/components/global-upload-panel";
 import { WorkspaceHeader } from "@/components/WorkspaceHeader";
 import { Outlet } from "react-router-dom";
-import { Toaster } from "sonner";
 
 export const WorkspaceLayout = () => {
   return (
@@ -13,9 +11,7 @@ export const WorkspaceLayout = () => {
           <Outlet />
         </main>
       </div>
-      <GlobalConfirmDialog />
       <GlobalUploadPanel />
-      <Toaster theme="dark" richColors position="top-center" />
     </div>
   );
 };
