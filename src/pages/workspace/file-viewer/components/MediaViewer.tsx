@@ -8,7 +8,7 @@ export const MediaPreview = (props: { file: FileRow }) => {
   const file = props.file;
   const fileType = props.file.file_type;
 
-  const { annotations, liveAnnotation } = useAnnotationStore();
+  const { annotations } = useAnnotationStore();
   const { activeFeedback } = useFeedbakStore();
 
   const committedAnnotations = activeFeedback?.annotations ?? annotations;
@@ -23,8 +23,6 @@ export const MediaPreview = (props: { file: FileRow }) => {
             height={file.height}
             imageUrl={file.file_url}
             annotations={committedAnnotations}
-            liveAnnotation={activeFeedback ? null : liveAnnotation}
-            readOnly={!!activeFeedback}
           />
         </div>
       ) : (

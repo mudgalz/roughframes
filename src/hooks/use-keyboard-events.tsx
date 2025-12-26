@@ -7,7 +7,6 @@ interface KeyboardShortcut {
   key: KeyCode;
   shift?: boolean;
   ctrl?: boolean;
-  meta?: boolean;
   alt?: boolean;
   action: () => void;
   preventDefault?: boolean;
@@ -64,8 +63,12 @@ export const useKeyboardShortcuts = (
 
         if (e.code !== sc.key) continue;
         if (sc.shift && !e.shiftKey) continue;
-        if (sc.ctrl && !e.ctrlKey) continue;
-        if (sc.meta && !e.metaKey) continue;
+        if (sc.ctrl) {
+          const isMac = navigator.platform.toUpperCase().includes("MAC");
+          const primaryMod = isMac ? e.metaKey : e.ctrlKey;
+          if (!primaryMod) continue;
+        }
+
         if (sc.alt && !e.altKey) continue;
 
         const shouldDisableOnInputs = sc.disableOnInputs ?? disableOnInputs;

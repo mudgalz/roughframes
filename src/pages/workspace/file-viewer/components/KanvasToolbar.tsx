@@ -9,9 +9,11 @@ export const KanvasToolbar = () => {
   const zoomIn = useKanvasStore((s) => s.zoomIn);
   const zoomOut = useKanvasStore((s) => s.zoomOut);
   const viewScale = useKanvasStore((s) => s.viewScale);
+  const viewOffset = useKanvasStore((s) => s.viewOffset);
   const resetView = useKanvasStore((s) => s.resetView);
   const { undo } = useAnnotationStore();
   const canUndo = useAnnotationStore((s) => s.undoStack.length > 0);
+  const canReset = viewScale !== 1 || viewOffset.x !== 0 || viewOffset.y !== 0;
 
   useKeyboardShortcuts([
     {
@@ -21,7 +23,7 @@ export const KanvasToolbar = () => {
       once: true,
       preventDefault: true,
       action: resetView,
-      enabled: viewScale !== 1,
+      enabled: canReset,
     },
     {
       id: "undo",
@@ -30,7 +32,6 @@ export const KanvasToolbar = () => {
       action: undo,
       enabled: canUndo,
       ctrl: true,
-      meta: true,
     },
   ]);
 

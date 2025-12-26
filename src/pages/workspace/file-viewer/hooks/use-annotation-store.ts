@@ -7,7 +7,6 @@ interface AnnotationStore {
   activeColor: string;
 
   annotations: Annotation[];
-  liveAnnotation: Annotation | null;
 
   undoStack: Annotation[][];
 
@@ -26,7 +25,6 @@ const useAnnotationStore = create<AnnotationStore>((set) => ({
   activeColor: "#ef4444",
 
   annotations: [],
-  liveAnnotation: null,
 
   undoStack: [],
 
@@ -40,7 +38,6 @@ const useAnnotationStore = create<AnnotationStore>((set) => ({
       undoStack: [...state.undoStack, state.annotations],
       redoStack: [],
       annotations: [...state.annotations, live],
-      liveAnnotation: null,
     }));
   },
 
@@ -48,7 +45,6 @@ const useAnnotationStore = create<AnnotationStore>((set) => ({
     set({
       annotations: [],
       undoStack: [],
-      liveAnnotation: null,
     }),
 
   undo: () =>

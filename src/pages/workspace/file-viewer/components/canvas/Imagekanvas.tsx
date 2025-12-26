@@ -15,6 +15,7 @@ import useAnnotationStore from "../../hooks/use-annotation-store";
 import { useKanvasStore } from "../../hooks/use-kanvas-controller";
 import type { Annotation, Point } from "../../types";
 import { isEnoughDrawn, simplifyRDP } from "./utils";
+import { useKeyboardShortcuts } from "@/hooks/use-keyboard-events";
 
 export interface ImageKanvasProps {
   imageUrl: string;
@@ -32,12 +33,14 @@ const ImageKanvas: React.FC<ImageKanvasProps> = ({
   const stageRef = useRef<Konva.Stage | null>(null);
 
   // live shape & positions
-  const rectRef = useRef<Konva.Rect | null>(null);
-  const ellipseRef = useRef<Konva.Ellipse | null>(null);
+  const strokeRef = useRef<Konva.Rect | Konva.Ellipse | null>(null);
+  const maskRef = useRef<Konva.Rect | Konva.Ellipse | null>(null);
+  const annotationsLayerRef = useRef<Konva.Layer | null>(null);
   const lineRef = useRef<Konva.Line | null>(null);
   const liveRef = useRef<Annotation | null>(null);
   const rawPointsRef = useRef<Point[]>([]);
   const liveLayerRef = useRef<Konva.Layer | null>(null);
+  const overlayRef = useRef<Konva.Rect | null>(null);
 
   // panning
   const isPanning = useRef(false);
@@ -47,6 +50,7 @@ const ImageKanvas: React.FC<ImageKanvasProps> = ({
 
   const { activeShape, activeColor, commitLiveAnnotation } =
     useAnnotationStore();
+
   const { viewScale, viewOffset, pan, zoomAtPoint } = useKanvasStore();
 
   const naturalSize = useMemo(() => ({ w: width, h: height }), [width, height]);
@@ -157,16 +161,23 @@ const ImageKanvas: React.FC<ImageKanvasProps> = ({
       const vw = (x2 - x1) * display.scale;
       const vh = (y2 - y1) * display.scale;
 
-      if (liveRef.current.shape === "rect") {
-        rectRef.current?.setAttrs({ x: vx, y: vy, width: vw, height: vh });
-      } else {
-        ellipseRef.current?.setAttrs({
-          x: vx + vw / 2,
-          y: vy + vh / 2,
-          radiusX: vw / 2,
-          radiusY: vh / 2,
-        });
-      }
+      const shapeAttrs =
+        activeShape === "rect"
+          ? { x: vx, y: vy, width: vw, height: vh }
+          : {
+              x: vx + vw / 2,
+              y: vy + vh / 2,
+              radiusX: vw / 2,
+              radiusY: vh / 2,
+            };
+
+      overlayRef.current?.visible(true);
+      maskRef.current?.visible(true);
+      strokeRef.current?.visible(true);
+      annotationsLayerRef.current?.visible(false);
+
+      strokeRef.current?.setAttrs(shapeAttrs as any);
+      maskRef.current?.setAttrs(shapeAttrs as any);
     }
 
     // FREEHAND
@@ -188,6 +199,9 @@ const ImageKanvas: React.FC<ImageKanvasProps> = ({
       lineRef.current?.points(
         liveRef.current.points.flatMap((p) => [p.x, p.y])
       );
+      annotationsLayerRef.current?.visible(false);
+
+      lineRef.current?.visible(true);
     }
 
     liveLayerRef.current?.draw();
@@ -226,30 +240,32 @@ const ImageKanvas: React.FC<ImageKanvasProps> = ({
     liveRef.current = null;
     rawPointsRef.current = [];
 
-    rectRef.current?.setAttrs({
-      x: 0,
-      y: 0,
-      width: 0,
-      height: 0,
-    });
-
-    ellipseRef.current?.setAttrs({
-      x: 0,
-      y: 0,
-      radiusX: 0,
-      radiusY: 0,
-    });
+    overlayRef.current?.visible(false);
+    strokeRef.current?.visible(false);
+    maskRef.current?.visible(false);
+    annotationsLayerRef.current?.visible(true);
 
     lineRef.current?.points([]);
-
+    lineRef.current?.visible(false);
     liveLayerRef.current?.draw();
   };
+
   const viewport = {
     x: viewOffset.x,
     y: viewOffset.y,
     scaleX: viewScale,
     scaleY: viewScale,
   };
+
+  useKeyboardShortcuts([
+    {
+      action: cleanup,
+      id: "escape-cleanup",
+      key: "Escape",
+      once: true,
+      preventDefault: true,
+    },
+  ]);
 
   return (
     <div ref={containerRef} className="w-full h-full overflow-hidden">
@@ -260,11 +276,17 @@ const ImageKanvas: React.FC<ImageKanvasProps> = ({
         onMouseDown={handlePointerDown}
         onMouseMove={handlePointerMove}
         onMouseUp={handlePointerUp}
+        style={{
+          cursor: ["circle", "rect"].includes(activeShape)
+            ? "crosshair"
+            : "default",
+        }}
         onWheel={(e) => {
           e.evt.preventDefault();
           const p = stageRef.current?.getPointerPosition();
           if (p) zoomAtPoint(p, e.evt.deltaY);
         }}>
+        {/* Image */}
         <Layer {...viewport}>
           {img && display && (
             <KonvaImage
@@ -281,32 +303,76 @@ const ImageKanvas: React.FC<ImageKanvasProps> = ({
 
         {/* Live Drawing */}
         <Layer ref={liveLayerRef} {...viewport} listening={false}>
-          <Rect
-            strokeWidth={2}
-            strokeScaleEnabled={false}
-            ref={rectRef}
-            stroke={activeColor}
-          />
-          <Ellipse
-            ref={ellipseRef}
-            stroke={activeColor}
-            radiusX={0}
-            radiusY={0}
-            strokeWidth={2}
-            strokeScaleEnabled={false}
-          />
+          {/* Overlay */}
+          {display && (
+            <Rect
+              ref={overlayRef}
+              x={display.x}
+              y={display.y}
+              width={width * display.scale}
+              height={height * display.scale}
+              fill="rgba(0,0,0,0.5)"
+              visible={false}
+              listening={false}
+            />
+          )}
+
+          {/* Stroke (visible outline) */}
+          {activeShape !== "freehand" &&
+            (activeShape === "rect" ? (
+              <Rect
+                ref={strokeRef as any}
+                stroke={activeColor}
+                strokeWidth={2}
+                strokeScaleEnabled={false}
+                visible={false}
+              />
+            ) : (
+              <Ellipse
+                ref={strokeRef as any}
+                stroke={activeColor}
+                strokeWidth={2}
+                radiusX={0}
+                radiusY={0}
+                strokeScaleEnabled={false}
+                visible={false}
+              />
+            ))}
+
+          {/* Mask (hole puncher) */}
+          {activeShape !== "freehand" &&
+            (activeShape === "rect" ? (
+              <Rect
+                ref={maskRef as any}
+                fill="black"
+                globalCompositeOperation="destination-out"
+                visible={false}
+              />
+            ) : (
+              <Ellipse
+                ref={maskRef as any}
+                fill="black"
+                radiusX={0}
+                radiusY={0}
+                globalCompositeOperation="destination-out"
+                visible={false}
+              />
+            ))}
+
+          {/* Freehand */}
           <Line
             ref={lineRef}
             stroke={activeColor}
-            lineCap="round"
-            lineJoin="round"
             strokeWidth={2}
             strokeScaleEnabled={false}
+            lineCap="round"
+            lineJoin="round"
+            visible={false}
           />
         </Layer>
 
         {/* Saved Annotations */}
-        <Layer {...viewport}>
+        <Layer ref={annotationsLayerRef} {...viewport}>
           {display &&
             annotations.map((a) => {
               // RECT / CIRCLE
