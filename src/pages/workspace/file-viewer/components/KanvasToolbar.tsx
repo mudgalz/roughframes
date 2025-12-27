@@ -4,6 +4,7 @@ import { RefreshCw, ZoomIn, ZoomOut } from "lucide-react";
 import useAnnotationStore from "../hooks/use-annotation-store";
 import { useKanvasStore } from "../hooks/use-kanvas-controller";
 import { CanvasHelp } from "./CanvasHelp";
+import { useEffect } from "react";
 
 export const KanvasToolbar = () => {
   const zoomIn = useKanvasStore((s) => s.zoomIn);
@@ -34,6 +35,10 @@ export const KanvasToolbar = () => {
       ctrl: true,
     },
   ]);
+
+  useEffect(() => {
+    return () => resetView();
+  }, []);
 
   return (
     <div className="flex h-full flex-col items-center gap-2 pr-2">

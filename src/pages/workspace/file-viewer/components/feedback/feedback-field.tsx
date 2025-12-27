@@ -16,11 +16,12 @@ export default function FeedbackField(props: { fileId: string }) {
 
   const { clear } = useFeedbakStore();
   const { add } = useFeedbackMutation(fileId);
-  const { setShape, annotations, clearAnnotations } = useAnnotationStore();
+  const { setShape, annotations, clearAnnotations, activeShape } =
+    useAnnotationStore();
 
   const handleStart = () => {
     clear();
-    setShape("rect");
+    if (activeShape === "none") setShape("rect");
   };
 
   const handleCancel = () => {

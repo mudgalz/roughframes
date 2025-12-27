@@ -1,6 +1,7 @@
 import type Konva from "konva";
 import React, { useCallback, useMemo, useRef } from "react";
 import {
+  Arrow,
   Ellipse,
   Image as KonvaImage,
   Layer,
@@ -10,12 +11,18 @@ import {
 } from "react-konva";
 import useImage from "use-image";
 
+import { Skeleton } from "@/components/ui/skeleton";
+import { useKeyboardShortcuts } from "@/hooks/use-keyboard-events";
 import useResizeObserver from "@/hooks/use-resize-observer";
 import useAnnotationStore from "../../hooks/use-annotation-store";
 import { useKanvasStore } from "../../hooks/use-kanvas-controller";
 import type { Annotation, Point } from "../../types";
-import { isEnoughDrawn, simplifyRDP } from "./utils";
-import { useKeyboardShortcuts } from "@/hooks/use-keyboard-events";
+import {
+  getNormalizedBounds,
+  isEnoughDrawn,
+  mapBoundsToStage,
+  simplifyRDP,
+} from "./utils";
 
 export interface ImageKanvasProps {
   imageUrl: string;
@@ -37,6 +44,8 @@ const ImageKanvas: React.FC<ImageKanvasProps> = ({
   const maskRef = useRef<Konva.Rect | Konva.Ellipse | null>(null);
   const annotationsLayerRef = useRef<Konva.Layer | null>(null);
   const lineRef = useRef<Konva.Line | null>(null);
+  const arrowRef = useRef<Konva.Arrow | null>(null);
+
   const liveRef = useRef<Annotation | null>(null);
   const rawPointsRef = useRef<Point[]>([]);
   const liveLayerRef = useRef<Konva.Layer | null>(null);
@@ -46,7 +55,7 @@ const ImageKanvas: React.FC<ImageKanvasProps> = ({
   const isPanning = useRef(false);
   const lastPos = useRef<Point | null>(null);
 
-  const [img] = useImage(imageUrl, "anonymous");
+  const [img, status] = useImage(imageUrl, "anonymous");
 
   const { activeShape, activeColor, commitLiveAnnotation } =
     useAnnotationStore();
@@ -110,7 +119,11 @@ const ImageKanvas: React.FC<ImageKanvasProps> = ({
       color: activeColor,
     };
 
-    if (activeShape === "rect" || activeShape === "circle") {
+    if (
+      activeShape === "rect" ||
+      activeShape === "circle" ||
+      activeShape === "arrow"
+    ) {
       liveRef.current = {
         ...base,
         shape: activeShape,
@@ -147,37 +160,60 @@ const ImageKanvas: React.FC<ImageKanvasProps> = ({
     // RECT / CIRCLE
     if (
       liveRef.current.shape === "rect" ||
-      liveRef.current.shape === "circle"
+      liveRef.current.shape === "circle" ||
+      liveRef.current.shape === "arrow"
     ) {
       liveRef.current.end = imgPos;
 
-      const x1 = Math.min(liveRef.current.start.x, imgPos.x);
-      const y1 = Math.min(liveRef.current.start.y, imgPos.y);
-      const x2 = Math.max(liveRef.current.start.x, imgPos.x);
-      const y2 = Math.max(liveRef.current.start.y, imgPos.y);
+      if (liveRef.current.shape === "arrow") {
+        const startStage = {
+          x: display.x + liveRef.current.start.x * display.scale,
+          y: display.y + liveRef.current.start.y * display.scale,
+        };
+        const endStage = {
+          x: display.x + imgPos.x * display.scale,
+          y: display.y + imgPos.y * display.scale,
+        };
 
-      const vx = display.x + x1 * display.scale;
-      const vy = display.y + y1 * display.scale;
-      const vw = (x2 - x1) * display.scale;
-      const vh = (y2 - y1) * display.scale;
+        annotationsLayerRef.current?.visible(false);
 
-      const shapeAttrs =
-        activeShape === "rect"
-          ? { x: vx, y: vy, width: vw, height: vh }
-          : {
-              x: vx + vw / 2,
-              y: vy + vh / 2,
-              radiusX: vw / 2,
-              radiusY: vh / 2,
-            };
+        arrowRef.current?.points([
+          startStage.x,
+          startStage.y,
+          endStage.x,
+          endStage.y,
+        ]);
+        arrowRef.current?.visible(true);
+      } else {
+        const bounds = getNormalizedBounds(liveRef.current.start, imgPos);
+        const stageBounds = mapBoundsToStage(
+          { display, viewOffset, viewScale },
+          bounds
+        );
 
-      overlayRef.current?.visible(true);
-      maskRef.current?.visible(true);
-      strokeRef.current?.visible(true);
-      annotationsLayerRef.current?.visible(false);
+        const shapeAttrs =
+          liveRef.current.shape === "rect"
+            ? {
+                x: stageBounds.x,
+                y: stageBounds.y,
+                width: stageBounds.width,
+                height: stageBounds.height,
+              }
+            : {
+                x: stageBounds.x + stageBounds.width / 2,
+                y: stageBounds.y + stageBounds.height / 2,
+                radiusX: stageBounds.width / 2,
+                radiusY: stageBounds.height / 2,
+              };
 
-      strokeRef.current?.setAttrs(shapeAttrs as any);
-      maskRef.current?.setAttrs(shapeAttrs as any);
+        overlayRef.current?.visible(true);
+        maskRef.current?.visible(true);
+        strokeRef.current?.visible(true);
+        annotationsLayerRef.current?.visible(false);
+
+        strokeRef.current?.setAttrs(shapeAttrs as any);
+        maskRef.current?.setAttrs(shapeAttrs as any);
+      }
     }
 
     // FREEHAND
@@ -231,7 +267,6 @@ const ImageKanvas: React.FC<ImageKanvasProps> = ({
       cleanup();
       return;
     }
-
     commitLiveAnnotation(liveRef.current);
     cleanup();
   };
@@ -269,178 +304,211 @@ const ImageKanvas: React.FC<ImageKanvasProps> = ({
 
   return (
     <div ref={containerRef} className="w-full h-full overflow-hidden">
-      <Stage
-        ref={stageRef}
-        width={stageSize.w}
-        height={stageSize.h}
-        onMouseDown={handlePointerDown}
-        onMouseMove={handlePointerMove}
-        onMouseUp={handlePointerUp}
-        style={{
-          cursor: ["circle", "rect"].includes(activeShape)
-            ? "crosshair"
-            : "default",
-        }}
-        onWheel={(e) => {
-          e.evt.preventDefault();
-          const p = stageRef.current?.getPointerPosition();
-          if (p) zoomAtPoint(p, e.evt.deltaY);
-        }}>
-        {/* Image */}
-        <Layer {...viewport}>
-          {img && display && (
-            <KonvaImage
-              image={img}
-              x={display.x}
-              y={display.y}
-              scaleX={display.scale}
-              scaleY={display.scale}
-              width={width}
-              height={height}
-            />
-          )}
-        </Layer>
+      {status === "loading" ? (
+        <Skeleton className="size-full" />
+      ) : (
+        <Stage
+          ref={stageRef}
+          width={stageSize.w}
+          height={stageSize.h}
+          onMouseDown={handlePointerDown}
+          onMouseMove={handlePointerMove}
+          onMouseUp={handlePointerUp}
+          style={{
+            cursor: ["circle", "rect"].includes(activeShape)
+              ? "crosshair"
+              : "default",
+          }}
+          onWheel={(e) => {
+            e.evt.preventDefault();
+            const p = stageRef.current?.getPointerPosition();
+            if (p) zoomAtPoint(p, e.evt.deltaY);
+          }}>
+          {/* Image */}
+          <Layer {...viewport}>
+            {img && display && (
+              <KonvaImage
+                image={img}
+                x={display.x}
+                y={display.y}
+                scaleX={display.scale}
+                scaleY={display.scale}
+                width={width}
+                height={height}
+              />
+            )}
+          </Layer>
 
-        {/* Live Drawing */}
-        <Layer ref={liveLayerRef} {...viewport} listening={false}>
-          {/* Overlay */}
-          {display && (
-            <Rect
-              ref={overlayRef}
-              x={display.x}
-              y={display.y}
-              width={width * display.scale}
-              height={height * display.scale}
-              fill="rgba(0,0,0,0.5)"
-              visible={false}
-              listening={false}
-            />
-          )}
-
-          {/* Stroke (visible outline) */}
-          {activeShape !== "freehand" &&
-            (activeShape === "rect" ? (
+          {/* Live Drawing */}
+          <Layer ref={liveLayerRef} {...viewport} listening={false}>
+            {/* Overlay */}
+            {display && (
               <Rect
-                ref={strokeRef as any}
-                stroke={activeColor}
-                strokeWidth={2}
-                strokeScaleEnabled={false}
+                ref={overlayRef}
+                x={display.x}
+                y={display.y}
+                width={width * display.scale}
+                height={height * display.scale}
+                fill="rgba(0,0,0,0.5)"
                 visible={false}
+                listening={false}
               />
-            ) : (
-              <Ellipse
-                ref={strokeRef as any}
-                stroke={activeColor}
-                strokeWidth={2}
-                radiusX={0}
-                radiusY={0}
-                strokeScaleEnabled={false}
-                visible={false}
-              />
-            ))}
+            )}
 
-          {/* Mask (hole puncher) */}
-          {activeShape !== "freehand" &&
-            (activeShape === "rect" ? (
-              <Rect
-                ref={maskRef as any}
-                fill="black"
-                globalCompositeOperation="destination-out"
-                visible={false}
-              />
-            ) : (
-              <Ellipse
-                ref={maskRef as any}
-                fill="black"
-                radiusX={0}
-                radiusY={0}
-                globalCompositeOperation="destination-out"
-                visible={false}
-              />
-            ))}
-
-          {/* Freehand */}
-          <Line
-            ref={lineRef}
-            stroke={activeColor}
-            strokeWidth={2}
-            strokeScaleEnabled={false}
-            lineCap="round"
-            lineJoin="round"
-            visible={false}
-          />
-        </Layer>
-
-        {/* Saved Annotations */}
-        <Layer ref={annotationsLayerRef} {...viewport}>
-          {display &&
-            annotations.map((a) => {
-              // RECT / CIRCLE
-              if (a.shape === "rect" || a.shape === "circle") {
-                const x1 = Math.min(a.start.x, a.end.x);
-                const y1 = Math.min(a.start.y, a.end.y);
-                const x2 = Math.max(a.start.x, a.end.x);
-                const y2 = Math.max(a.start.y, a.end.y);
-
-                const vx = display.x + x1 * display.scale;
-                const vy = display.y + y1 * display.scale;
-                const vw = (x2 - x1) * display.scale;
-                const vh = (y2 - y1) * display.scale;
-
-                if (a.shape === "rect") {
-                  return (
+            {/* Stroke + Mask for Rect / Circle */}
+            {activeShape !== "freehand" && activeShape !== "arrow" && (
+              <>
+                {activeShape === "rect" ? (
+                  <>
                     <Rect
-                      key={a.id}
-                      x={vx}
-                      y={vy}
-                      width={vw}
-                      height={vh}
-                      stroke={a.color}
+                      ref={strokeRef as any}
+                      stroke={activeColor}
                       strokeWidth={2}
                       strokeScaleEnabled={false}
+                      visible={false}
+                    />
+                    <Rect
+                      ref={maskRef as any}
+                      fill="black"
+                      globalCompositeOperation="destination-out"
+                      visible={false}
+                    />
+                  </>
+                ) : (
+                  <>
+                    <Ellipse
+                      ref={strokeRef as any}
+                      stroke={activeColor}
+                      strokeWidth={2}
+                      radiusX={0}
+                      radiusY={0}
+                      strokeScaleEnabled={false}
+                      visible={false}
+                    />
+                    <Ellipse
+                      ref={maskRef as any}
+                      fill="black"
+                      radiusX={0}
+                      radiusY={0}
+                      globalCompositeOperation="destination-out"
+                      visible={false}
+                    />
+                  </>
+                )}
+              </>
+            )}
+
+            {/* Freehand */}
+            <Line
+              ref={lineRef}
+              stroke={activeColor}
+              strokeWidth={2}
+              strokeScaleEnabled={false}
+              lineCap="round"
+              lineJoin="round"
+              visible={false}
+            />
+
+            <Arrow
+              points={[]}
+              ref={arrowRef}
+              stroke={activeColor}
+              fill={activeColor}
+              strokeWidth={2}
+              pointerLength={14}
+              pointerWidth={14}
+              visible={false}
+              strokeScaleEnabled={false}
+              listening={false}
+            />
+          </Layer>
+
+          {/* Saved Annotations */}
+          <Layer ref={annotationsLayerRef} {...viewport}>
+            {display &&
+              annotations.map((a) => {
+                // RECT / CIRCLE
+                if (a.shape === "rect" || a.shape === "circle") {
+                  const bounds = getNormalizedBounds(a.start, a.end);
+                  const stageBounds = mapBoundsToStage(
+                    { display, viewOffset, viewScale },
+                    bounds
+                  );
+
+                  return a.shape === "rect" ? (
+                    <Rect
+                      {...stageBounds}
+                      key={a.id}
+                      stroke={a.color}
+                      strokeWidth={2}
+                      opacity={0.8}
+                      listening={false}
+                    />
+                  ) : (
+                    <Ellipse
+                      key={a.id}
+                      x={stageBounds.x + stageBounds.width / 2}
+                      y={stageBounds.y + stageBounds.height / 2}
+                      radiusX={stageBounds.width / 2}
+                      radiusY={stageBounds.height / 2}
+                      stroke={a.color}
+                      strokeWidth={2}
+                      opacity={0.8}
+                      listening={false}
                     />
                   );
                 }
 
-                // CIRCLE / ELLIPSE
-                return (
-                  <Ellipse
-                    key={a.id}
-                    x={vx + vw / 2}
-                    y={vy + vh / 2}
-                    radiusX={vw / 2}
-                    radiusY={vh / 2}
-                    stroke={a.color}
-                    strokeWidth={2}
-                    strokeScaleEnabled={false}
-                  />
-                );
-              }
+                if (a.shape === "arrow") {
+                  console.log(a);
+                  const startX = display.x + a.start.x * display.scale;
+                  const startY = display.y + a.start.y * display.scale;
+                  const endX = display.x + a.end.x * display.scale;
+                  const endY = display.y + a.end.y * display.scale;
 
-              // FREEHAND
-              if (a.shape === "freehand") {
-                const points = a.points.flatMap((p) => [
-                  display.x + p.x * display.scale,
-                  display.y + p.y * display.scale,
-                ]);
+                  return (
+                    <Arrow
+                      key={a.id}
+                      points={[startX, startY, endX, endY]}
+                      stroke={a.color}
+                      fill={a.color}
+                      strokeWidth={2}
+                      pointerLength={14}
+                      pointerWidth={14}
+                      strokeScaleEnabled={false}
+                      opacity={0.9}
+                      listening={false}
+                    />
+                  );
+                }
 
-                return (
-                  <Line
-                    key={a.id}
-                    points={points}
-                    stroke={a.color}
-                    strokeWidth={2}
-                    lineCap="round"
-                    lineJoin="round"
-                    strokeScaleEnabled={false}
-                  />
-                );
-              }
+                // FREEHAND
+                if (a.shape === "freehand") {
+                  const points = a.points.flatMap((p) => [
+                    display.x + p.x * display.scale,
+                    display.y + p.y * display.scale,
+                  ]);
 
-              return null;
-            })}
-        </Layer>
-      </Stage>
+                  return (
+                    <Line
+                      opacity={0.8}
+                      key={a.id}
+                      points={points}
+                      stroke={a.color}
+                      strokeWidth={2}
+                      lineCap="round"
+                      lineJoin="round"
+                      strokeScaleEnabled={false}
+                      listening={false}
+                    />
+                  );
+                }
+
+                return null;
+              })}
+          </Layer>
+        </Stage>
+      )}
     </div>
   );
 };

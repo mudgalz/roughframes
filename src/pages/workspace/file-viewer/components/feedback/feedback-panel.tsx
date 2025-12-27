@@ -1,3 +1,5 @@
+import { useEffect } from "react";
+import { useFeedbakStore } from "../../hooks/use-feedback-store";
 import FeedbackField from "./feedback-field";
 import { FeedbackList } from "./feedback-list";
 
@@ -6,6 +8,10 @@ interface FeedbackPanelProps {
 }
 
 export const FeedbackPanel = ({ fileId }: FeedbackPanelProps) => {
+  const { clear } = useFeedbakStore();
+  useEffect(() => {
+    return () => clear();
+  }, []);
   return (
     <div className="flex flex-col h-full p-4 space-y-4 custom-scroll overflow-y-auto">
       <FeedbackField fileId={fileId} />

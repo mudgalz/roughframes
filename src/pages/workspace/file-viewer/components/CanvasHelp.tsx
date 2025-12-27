@@ -69,17 +69,6 @@ const SHORTCUTS: Shortcut[] = [
     ),
     description: "Undo last action (Shapes)",
   },
-  {
-    id: "redo",
-    keys: (
-      <KbdGroup>
-        <Kbd>Ctrl</Kbd>
-        <span className="text-sm">+</span>
-        <Kbd>Y</Kbd>
-      </KbdGroup>
-    ),
-    description: "Redo last action (Shapes)",
-  },
 ];
 
 export const CanvasHelp: React.FC = () => {

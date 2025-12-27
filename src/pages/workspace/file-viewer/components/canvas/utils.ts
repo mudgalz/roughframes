@@ -57,7 +57,11 @@ export function isEnoughDrawn(
   const minStroke = opts?.minStrokeLength ?? 4;
 
   // RECT / CIRCLE
-  if (annotation.shape === "rect" || annotation.shape === "circle") {
+  if (
+    annotation.shape === "rect" ||
+    annotation.shape === "circle" ||
+    annotation.shape === "arrow"
+  ) {
     const dx = annotation.end.x - annotation.start.x;
     const dy = annotation.end.y - annotation.start.y;
     return Math.hypot(dx, dy) >= minBox;
@@ -80,3 +84,34 @@ export function isEnoughDrawn(
 
   return false;
 }
+
+interface ViewportTransform {
+  display: ({ scale: number } & Point) | null;
+  viewOffset: Point;
+  viewScale: number;
+}
+
+interface RectBounds extends Point {
+  width: number;
+  height: number;
+}
+
+// Rect & circle normalized box calculation
+export const getNormalizedBounds = (a: Point, b: Point): RectBounds => {
+  const x1 = Math.min(a.x, b.x);
+  const y1 = Math.min(a.y, b.y);
+  const w = Math.abs(a.x - b.x);
+  const h = Math.abs(a.y - b.y);
+  return { x: x1, y: y1, width: w, height: h };
+};
+
+// Map normalized box → Stage bounds
+export const mapBoundsToStage = (
+  { display }: ViewportTransform,
+  rect: RectBounds
+): RectBounds => ({
+  x: display!.x + rect.x * display!.scale,
+  y: display!.y + rect.y * display!.scale,
+  width: rect.width * display!.scale,
+  height: rect.height * display!.scale,
+});

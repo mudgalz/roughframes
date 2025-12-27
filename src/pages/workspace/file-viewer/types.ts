@@ -1,4 +1,4 @@
-export type Shape = "none" | "rect" | "circle" | "freehand";
+export type Shape = "none" | "rect" | "circle" | "freehand" | "arrow";
 
 export interface Point {
   x: number;
@@ -16,7 +16,7 @@ export interface BaseAnnotation {
  * Rect & Circle are defined by two points
  */
 export interface BoxAnnotation extends BaseAnnotation {
-  shape: "rect" | "circle";
+  shape: "rect" | "circle" | "arrow";
   start: Point; // image space
   end: Point; // image space
 }

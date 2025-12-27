@@ -1,4 +1,11 @@
-import { Check, Circle, LineSquiggle, Pencil, Square } from "lucide-react";
+import {
+  ArrowUpRight,
+  Check,
+  Circle,
+  LineSquiggle,
+  Pencil,
+  Square,
+} from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import {
@@ -21,9 +28,16 @@ const TOOL_OPTIONS: ToolOption[] = [
   { value: "rect", label: "Rectangle", icon: <Square size={14} /> },
   { value: "freehand", label: "Freehand", icon: <Pencil size={14} /> },
   { value: "circle", label: "Circle", icon: <Circle size={14} /> },
+  { value: "arrow", label: "Arrow", icon: <ArrowUpRight size={14} /> },
 ];
 
-const COLORS: string[] = ["#ef4444", "#22c55e", "#3b82f6", "#a855f7"];
+const COLORS: string[] = [
+  "#ef4444",
+  "#22c55e",
+  "#3b82f6",
+  "#a855f7",
+  "#ffd700",
+];
 
 export default function AnnotationToolbar() {
   const { annotations, activeColor, setColor, setShape, activeShape } =
@@ -50,7 +64,7 @@ export default function AnnotationToolbar() {
             </span>
           </Button>
         </PopoverTrigger>
-        <PopoverContent>
+        <PopoverContent className="w-64">
           <div>
             <div className="mb-3">
               <p className="text-sm text-muted-foreground mb-1">Shape</p>
