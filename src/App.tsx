@@ -8,6 +8,7 @@ import Home from "./pages/home";
 import Identify from "./pages/identify";
 import FileViewer from "./pages/workspace/file-viewer/file-viewer";
 import Workspace from "./pages/workspace/workspace";
+import NotFound from "./pages/not-found";
 
 export default function App() {
   return (
@@ -25,6 +26,7 @@ export default function App() {
         </Route>
         <Route path="file/:fileId" element={<FileViewer />} />
       </Route>
+      <Route path="*" element={<NotFound />} />
     </Routes>
   );
 }
