@@ -1,22 +1,48 @@
-import { FolderIcon, SearchIcon, SwatchBookIcon } from "lucide-react";
+import {
+  FileText,
+  Film,
+  Layers,
+  MousePointerClick,
+  Pencil,
+  Square,
+} from "lucide-react";
 
 const featuresList = [
   {
-    icon: SwatchBookIcon,
-    title: "Clean Workspace",
+    icon: Pencil,
+    title: "Freehand Drawing & Sketching",
     description:
-      "A minimal file system designed for clarity and fast navigation.",
+      "Draw naturally on images and PDFs with smooth freehand tools designed for quick ideas and rough visual feedback.",
   },
   {
-    icon: SearchIcon,
-    title: "Instant Search",
+    icon: Square,
+    title: "Precise Shape Annotations",
     description:
-      "Quickly find images, videos, and files across your workspace.",
+      "Highlight areas using rectangles, circles, arrows, and guides to communicate clearly and reduce back-and-forth.",
   },
   {
-    icon: FolderIcon,
-    title: "Nested Folders",
-    description: "Organize your content with unlimited folder depth.",
+    icon: MousePointerClick,
+    title: "Pixel-Accurate Marking",
+    description:
+      "Zoom, pan, and annotate with precision. Every mark stays locked to the exact spot, even at different scales.",
+  },
+  {
+    icon: FileText,
+    title: "Image & PDF Support",
+    description:
+      "Annotate images and multi-page PDFs seamlessly without converting files or losing quality.",
+  },
+  {
+    icon: Layers,
+    title: "Non-Destructive Annotations",
+    description:
+      "All annotations live on separate layers, so your original files remain untouched and easy to export or revise.",
+  },
+  {
+    icon: Film,
+    title: "Video Frame Annotation (Coming Soon)",
+    description:
+      "Review and annotate individual video frames and timestamps — perfect for design reviews and motion feedback.",
   },
 ];
 

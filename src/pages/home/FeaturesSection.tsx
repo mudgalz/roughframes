@@ -23,8 +23,8 @@ const FeaturesSection = ({ featuresList }: FeaturesSectionProps) => {
             Powerful Features Built for Speed
           </h2>
           <p className="text-gray-400 text-lg max-w-2xl mx-auto">
-            Dotmark gives you the tools to manage files, annotate instantly, and
-            stay in flow.
+            RoughFrames gives you the tools to manage files, annotate instantly,
+            and stay in flow.
           </p>
         </div>
 

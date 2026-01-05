@@ -9,7 +9,7 @@ const Footer = () => {
           <Link
             onClick={() => window.scrollTo({ top: 0, behavior: "smooth" })}
             to={"/"}>
-            Dotmarky
+            RoughFrames
           </Link>
           , Made with ❤️ by{" "}
           <a

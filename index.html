@@ -1,13 +1,61 @@
 <!DOCTYPE html>
 <html lang="en">
   <head>
+    <!-- Basic -->
     <meta charset="UTF-8" />
-    <link rel="icon" type="image/svg+xml" href="/icon.svg" />
+    <meta http-equiv="X-UA-Compatible" content="IE=edge" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Dotmark</title>
+
+    <!-- Title -->
+    <title>
+      RoughFrames — Draw, Annotate & Review Images, PDFs, and Video Frames
+    </title>
+
+    <!-- Favicon -->
+    <link rel="icon" type="image/svg+xml" href="/icon.svg" />
+
+    <!-- Primary SEO -->
+    <meta
+      name="description"
+      content="RoughFrames is a lightweight annotation tool to draw, sketch, and review images, PDFs, and video frames. Mark ideas quickly, give visual feedback, and collaborate with ease." />
+    <meta
+      name="keywords"
+      content="annotation tool, draw annotations, pdf annotation, image markup, video frame annotation, visual feedback, canvas drawing" />
+    <meta name="author" content="RoughFrames" />
+
+    <!-- Open Graph / Facebook -->
+    <meta property="og:type" content="website" />
+    <meta
+      property="og:title"
+      content="RoughFrames — Visual Annotation Made Simple" />
+    <meta
+      property="og:description"
+      content="Draw, annotate, and review images, PDFs, and video frames in one clean canvas. Built for fast visual feedback." />
+    <meta property="og:image" content="/og_image.webp" />
+    <meta property="og:image:width" content="1200" />
+    <meta property="og:image:height" content="630" />
+    <meta property="og:site_name" content="RoughFrames" />
+
+    <!-- Twitter -->
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content="RoughFrames — Draw & Annotate Frames" />
+    <meta
+      name="twitter:description"
+      content="A modern tool to sketch, annotate, and review images, PDFs, and video frames." />
+    <meta name="twitter:image" content="/og_image.webp" />
+
+    <!-- Theme (optional but nice) -->
+    <meta name="theme-color" content="#0f172a" />
   </head>
+
   <body>
+    <noscript>
+      RoughFrames requires JavaScript to run. Please enable JavaScript in your
+      browser.
+    </noscript>
+
     <div id="root"></div>
+
     <script type="module" src="/src/main.tsx"></script>
   </body>
 </html>

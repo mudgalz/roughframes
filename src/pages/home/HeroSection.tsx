@@ -4,7 +4,7 @@ import { Link } from "react-router-dom";
 
 const HeroSection = () => {
   return (
-    <section className="flex  flex-1 flex-col justify-between gap-12 overflow-x-hidden py-12 pt-24 sm:gap-16 sm:py-20 lg:gap-24 lg:py-28">
+    <section className="flex flex-1 flex-col justify-between gap-12 overflow-x-hidden py-12 pt-24 sm:gap-16 sm:py-20 lg:gap-24 lg:py-28">
       {/* Hero Content */}
       <div className="mx-auto flex max-w-5xl flex-col items-center gap-8 px-4 text-center sm:px-6 lg:px-8">
         {/* Badge row */}
@@ -12,15 +12,17 @@ const HeroSection = () => {
           <Badge className="bg-indigo-500/20 text-indigo-300 border-indigo-400/20">
             New
           </Badge>
-          <span className="text-gray-400">Dot-Based Visual Annotation</span>
+          <span className="text-gray-400">
+            Visual Annotation for Images, PDFs & Frames
+          </span>
         </div>
 
         {/* Main Heading */}
-        <h1 className="text-4xl leading-tight font-bold tracking-tight sm:text-5xl lg:text-6xl">
-          Comment Smarter.
+        <h1 className="text-4xl font-bold leading-tight tracking-tight sm:text-5xl lg:text-6xl">
+          Draw. Annotate.
           <br />
           <span className="relative">
-            Collaborate Faster.
+            Review Faster.
             <svg
               width="223"
               height="12"
@@ -30,13 +32,13 @@ const HeroSection = () => {
               className="absolute inset-x-0 bottom-0 w-full translate-y-1/2 max-sm:hidden">
               <path
                 d="M1.11716 10.428C39.7835 4.97282 75.9074 2.70494 114.894 1.98894C143.706 1.45983 175.684 0.313587 204.212 3.31596C209.925 3.60546 215.144 4.59884 221.535 5.74551"
-                stroke="url(#paint0_linear_10365_68643)"
+                stroke="url(#paint0_linear)"
                 strokeWidth="2"
                 strokeLinecap="round"
               />
               <defs>
                 <linearGradient
-                  id="paint0_linear_10365_68643"
+                  id="paint0_linear"
                   x1="18.8541"
                   y1="3.72033"
                   x2="42.6487"
@@ -51,22 +53,21 @@ const HeroSection = () => {
         </h1>
 
         {/* Subtext */}
-        <p className="text-gray-400 max-w-2xl text-lg leading-relaxed">
-          Dotmark helps you store files, leave dot-based comments on images and
-          videos, track timestamps, organize projects, and collaborate
-          effortlessly—all inside a minimal, distraction-free workspace.
+        <p className="max-w-2xl text-lg leading-relaxed text-gray-400">
+          RoughFrames is a modern canvas to draw, sketch, and annotate images
+          and PDFs. Leave visual feedback, mark precise areas, review work
+          clearly, and collaborate faster — with video frame annotation coming
+          next.
         </p>
 
         {/* CTA Button */}
         <Button
           size="lg"
           asChild
-          className="bg-indigo-600 hover:bg-indigo-500 text-white shadow-lg shadow-indigo-500/20">
-          <Link to={"/identify"}>Start Using Dotmark</Link>
+          className="bg-indigo-600 text-white shadow-lg shadow-indigo-500/20 hover:bg-indigo-500">
+          <Link to="/identify">Start Using RoughFrames</Link>
         </Button>
       </div>
-
-      {/* Hero Image */}
     </section>
   );
 };
