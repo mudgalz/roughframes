@@ -10,7 +10,7 @@ const Header = () => {
           <h1 className="text-2xl font-semibold">RoughFrames</h1>
         </Link>
 
-        <a href="https://github.com/mudgalz/rough-frames">
+        <a target="_blank" href="https://github.com/mudgalz/roughframes">
           <Button variant="ghost">
             <span>
               <Github />
