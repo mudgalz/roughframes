@@ -1,19 +1,28 @@
 import { Button } from "@/components/ui/button";
+import { Kbd } from "@/components/ui/kbd";
+import { Separator } from "@/components/ui/separator";
 import { useKeyboardShortcuts } from "@/hooks/use-keyboard-events";
 import { RefreshCw, ZoomIn, ZoomOut } from "lucide-react";
+import { useEffect } from "react";
 import useAnnotationStore from "../hooks/use-annotation-store";
 import { useKanvasStore } from "../hooks/use-kanvas-controller";
 import { CanvasHelp } from "./CanvasHelp";
-import { useEffect } from "react";
+import PdfToolbar from "./PdfToolbar";
 
-export const KanvasToolbar = () => {
+interface KanvasToolbarProps {
+  isPDF?: boolean;
+}
+
+export const KanvasToolbar = ({ isPDF }: KanvasToolbarProps) => {
   const zoomIn = useKanvasStore((s) => s.zoomIn);
   const zoomOut = useKanvasStore((s) => s.zoomOut);
   const viewScale = useKanvasStore((s) => s.viewScale);
   const viewOffset = useKanvasStore((s) => s.viewOffset);
   const resetView = useKanvasStore((s) => s.resetView);
+
   const { undo } = useAnnotationStore();
   const canUndo = useAnnotationStore((s) => s.undoStack.length > 0);
+
   const canReset = viewScale !== 1 || viewOffset.x !== 0 || viewOffset.y !== 0;
 
   useKeyboardShortcuts([
@@ -38,33 +47,46 @@ export const KanvasToolbar = () => {
 
   useEffect(() => {
     return () => resetView();
-  }, []);
+  }, [resetView]);
 
   return (
-    <div className="flex h-full flex-col items-center gap-2 pr-2">
-      {/* Push rest to bottom */}
-      <div className="flex flex-col items-center gap-2 mb-auto">
-        <Button title="Zoom In" variant="outline" size="icon" onClick={zoomIn}>
-          <ZoomIn size={18} />
-        </Button>
+    <div className="shrink-0 border-t p-1">
+      <div className="flex items-center gap-2">
+        {/* LEFT */}
+        <CanvasHelp />
 
-        <Button
-          title="Zoom Out"
-          variant="outline"
-          size="icon"
-          onClick={zoomOut}>
-          <ZoomOut size={18} />
-        </Button>
+        {/* CENTER (PDF only) */}
+        <div className="flex-1 flex justify-center">
+          {isPDF && <PdfToolbar />}
+        </div>
 
-        <Button
-          title="Reset View"
-          variant="outline"
-          size="icon"
-          onClick={resetView}>
-          <RefreshCw size={18} />
-        </Button>
+        {/* RIGHT */}
+        <div className="flex items-center gap-2">
+          <Button
+            title="Zoom Out"
+            variant="ghost"
+            size="icon"
+            onClick={zoomOut}>
+            <ZoomOut size={18} />
+          </Button>
+
+          <Kbd>{Math.round(viewScale * 100)}%</Kbd>
+
+          <Button title="Zoom In" variant="ghost" size="icon" onClick={zoomIn}>
+            <ZoomIn size={18} />
+          </Button>
+
+          <Separator orientation="vertical" className="h-6!" />
+
+          <Button
+            title="Reset View"
+            variant="ghost"
+            size="icon"
+            onClick={resetView}>
+            <RefreshCw size={18} />
+          </Button>
+        </div>
       </div>
-      <CanvasHelp />
     </div>
   );
 };

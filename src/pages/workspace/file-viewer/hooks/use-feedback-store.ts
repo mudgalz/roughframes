@@ -7,7 +7,7 @@ interface FeedbackStore {
   clear: () => void;
 }
 
-export const useFeedbakStore = create<FeedbackStore>((set) => ({
+export const useFeedbackStore = create<FeedbackStore>((set) => ({
   activeFeedback: null,
   openExisting: (feedback) => set({ activeFeedback: feedback }),
   clear: () => set({ activeFeedback: null }),

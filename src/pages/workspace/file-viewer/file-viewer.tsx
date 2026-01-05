@@ -19,16 +19,16 @@ const FileViewer = () => {
       </div>
     );
   return (
-    <div className="h-screen flex flex-col p-1 gap-1 overflow-hidden">
+    <div className="h-screen flex flex-col gap-0.5 overflow-hidden p-0.5">
       <FileHeader file={data} />
 
-      <div className="flex flex-1 gap-1 overflow-hidden">
-        <div className="flex-1 bg-muted/50 rounded-md overflow-hidden">
+      <div className="flex flex-1 gap-0.5 overflow-hidden">
+        <div className="flex-1 bg-muted/50 rounded-sm overflow-hidden">
           <MediaPreview file={data} />
         </div>
 
         {isOpen && (
-          <div className="basis-3/12 bg-muted/50 rounded-md overflow-auto">
+          <div className="basis-3/12 bg-muted/50 rounded-sm overflow-auto">
             <FeedbackPanel fileId={data.id} />
           </div>
         )}

@@ -10,6 +10,7 @@ export interface BaseAnnotation {
   shape: Shape;
   created_at: string;
   color: string;
+  pdf_page?: number;
 }
 
 /**

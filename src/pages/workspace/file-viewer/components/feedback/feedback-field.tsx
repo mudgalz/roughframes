@@ -6,7 +6,7 @@ import { useUser } from "@/hooks/use-user";
 import { Send } from "lucide-react";
 import { useState } from "react";
 import useAnnotationStore from "../../hooks/use-annotation-store";
-import { useFeedbakStore } from "../../hooks/use-feedback-store";
+import { useFeedbackStore } from "../../hooks/use-feedback-store";
 import AnnotationToolbar from "../AnnotationToolbar";
 
 export default function FeedbackField(props: { fileId: string }) {
@@ -14,7 +14,7 @@ export default function FeedbackField(props: { fileId: string }) {
   const [comment, setComment] = useState("");
   const user = useUser((s) => s.user);
 
-  const { clear } = useFeedbakStore();
+  const { clear } = useFeedbackStore();
   const { add } = useFeedbackMutation(fileId);
   const { setShape, annotations, clearAnnotations, activeShape } =
     useAnnotationStore();

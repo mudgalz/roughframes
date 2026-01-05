@@ -12,7 +12,7 @@ export default function FileHeader(props: { file: FileRow }) {
   };
   const file = props.file;
   return (
-    <div className="flex items-center justify-between p-3 rounded-md bg-muted/50">
+    <div className="flex items-center justify-between p-3 rounded-sm bg-muted/50">
       <div className="flex items-center gap-2">
         <Button onClick={handleBack} size={"icon"} variant={"ghost"}>
           <ArrowLeft />

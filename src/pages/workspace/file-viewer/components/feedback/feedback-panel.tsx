@@ -1,5 +1,5 @@
 import { useEffect } from "react";
-import { useFeedbakStore } from "../../hooks/use-feedback-store";
+import { useFeedbackStore } from "../../hooks/use-feedback-store";
 import FeedbackField from "./feedback-field";
 import { FeedbackList } from "./feedback-list";
 
@@ -8,7 +8,7 @@ interface FeedbackPanelProps {
 }
 
 export const FeedbackPanel = ({ fileId }: FeedbackPanelProps) => {
-  const { clear } = useFeedbakStore();
+  const { clear } = useFeedbackStore();
   useEffect(() => {
     return () => clear();
   }, []);

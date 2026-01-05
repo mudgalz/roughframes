@@ -1,5 +1,5 @@
 import type { FeedbackRow } from "@/lib/types";
-import { useFeedbakStore } from "../../hooks/use-feedback-store";
+import { useFeedbackStore } from "../../hooks/use-feedback-store";
 
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 
@@ -16,15 +16,16 @@ import { Spinner } from "@/components/ui/spinner";
 import { useFeedbackMutation } from "@/hooks/use-feedback";
 import { cn, formatDate } from "@/lib/utils";
 import { MoreVertical } from "lucide-react";
+import { usePdfStore } from "../../hooks/use-pdf-store";
 
 interface Props {
   feedback: FeedbackRow;
 }
 
 export default function FeedbackItem({ feedback }: Props) {
-  const { openExisting, activeFeedback, clear } = useFeedbakStore();
-  const { remove, update } = useFeedbackMutation(feedback.file_id);
-
+  const { openExisting, activeFeedback, clear } = useFeedbackStore();
+  const { remove } = useFeedbackMutation(feedback.file_id);
+  const { setPage } = usePdfStore();
   const handleEdit = () => {
     // openExisting(feedback);
   };
@@ -33,12 +34,17 @@ export default function FeedbackItem({ feedback }: Props) {
     remove.mutate(feedback.id);
   };
 
+  const isPdf = Boolean(feedback.annotations?.[0]?.pdf_page);
+
   const handleSelect = () => {
     if (!hasAnnotations) return;
 
     if (activeFeedback?.id === feedback.id) {
       clear();
     } else {
+      if (isPdf) {
+        setPage(feedback.annotations[0].pdf_page || 1);
+      }
       openExisting(feedback);
     }
   };

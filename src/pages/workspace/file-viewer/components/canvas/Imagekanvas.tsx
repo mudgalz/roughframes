@@ -29,6 +29,7 @@ export interface ImageKanvasProps {
   width: number;
   height: number;
   annotations: Annotation[];
+  pdf_page?: number;
 }
 
 const ImageKanvas: React.FC<ImageKanvasProps> = ({
@@ -36,6 +37,7 @@ const ImageKanvas: React.FC<ImageKanvasProps> = ({
   width,
   height,
   annotations,
+  pdf_page,
 }) => {
   const stageRef = useRef<Konva.Stage | null>(null);
 
@@ -117,6 +119,7 @@ const ImageKanvas: React.FC<ImageKanvasProps> = ({
       id: crypto.randomUUID(),
       created_at: new Date().toISOString(),
       color: activeColor,
+      ...(pdf_page && { pdf_page }),
     };
 
     if (
@@ -325,7 +328,7 @@ const ImageKanvas: React.FC<ImageKanvasProps> = ({
             if (p) zoomAtPoint(p, e.evt.deltaY);
           }}>
           {/* Image */}
-          <Layer {...viewport}>
+          <Layer listening={false} {...viewport}>
             {img && display && (
               <KonvaImage
                 image={img}
@@ -424,7 +427,7 @@ const ImageKanvas: React.FC<ImageKanvasProps> = ({
           </Layer>
 
           {/* Saved Annotations */}
-          <Layer ref={annotationsLayerRef} {...viewport}>
+          <Layer listening={false} ref={annotationsLayerRef} {...viewport}>
             {display &&
               annotations.map((a) => {
                 // RECT / CIRCLE
@@ -460,7 +463,6 @@ const ImageKanvas: React.FC<ImageKanvasProps> = ({
                 }
 
                 if (a.shape === "arrow") {
-                  console.log(a);
                   const startX = display.x + a.start.x * display.scale;
                   const startY = display.y + a.start.y * display.scale;
                   const endX = display.x + a.end.x * display.scale;

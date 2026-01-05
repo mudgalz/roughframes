@@ -1,30 +1,24 @@
 import type { FileRow } from "@/lib/types";
 import useAnnotationStore from "../hooks/use-annotation-store";
-import { useFeedbakStore } from "../hooks/use-feedback-store";
-import ImageKanvas from "./canvas/Imagekanvas";
-import { KanvasToolbar } from "./KanvasToolbar";
+import { useFeedbackStore } from "../hooks/use-feedback-store";
+import ImageFile from "./canvas/image-file";
+import PdfFile from "./canvas/pdf-file";
 
 export const MediaPreview = (props: { file: FileRow }) => {
   const file = props.file;
   const fileType = props.file.file_type;
 
   const { annotations } = useAnnotationStore();
-  const { activeFeedback } = useFeedbakStore();
+  const { activeFeedback } = useFeedbackStore();
 
   const committedAnnotations = activeFeedback?.annotations ?? annotations;
 
   return (
-    <div className="w-full h-full flex items-center justify-center p-2">
+    <div className="w-full h-full flex items-center justify-center">
       {fileType === "image" ? (
-        <div className="w-full h-full flex bgred">
-          <KanvasToolbar />
-          <ImageKanvas
-            width={file.width}
-            height={file.height}
-            imageUrl={file.file_url}
-            annotations={committedAnnotations}
-          />
-        </div>
+        <ImageFile file={file} annotations={committedAnnotations} />
+      ) : fileType === "raw" ? (
+        <PdfFile pdfUrl={file.file_url} annotations={committedAnnotations} />
       ) : (
         <video
           src={file.file_url}
